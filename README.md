@@ -1,5 +1,6 @@
-# plugins
-Diverse Tampermonkey plugins
+# Tampermonkey Plugins
+
+Deze plugins kun je gebruiken in combinatie met de browser extensie [Tampermonkey](https://www.tampermonkey.net/).
 
 Bekijk de diverse [branches](https://github.com/WijZijnGERRIT/plugins/branches) voor alle plugins:
 
