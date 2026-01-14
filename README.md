@@ -1,6 +1,6 @@
-#Tribe CRM tools
+# Tribe CRM tools
 
-Deze plugin kun je gebruiken in combinatie met de browser extensie Tampermonkey. https://www.tampermonkey.net/
+Deze plugin kun je gebruiken in combinatie met de browser extensie [Tampermonkey](https://www.tampermonkey.net/).
 
 Gebruik vervolgens deze link om de plugin te installeren (of bij te werken) in Tampermonkey:
 [Installeer Tribe CRM tools](https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js)
