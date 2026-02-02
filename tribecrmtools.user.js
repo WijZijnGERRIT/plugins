@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.2.2.1
+// @version      2026.2.2.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.2.2.2
+- Update voor optie 10: Toon de checboxes voor de tekst ipv er onder
 
 versie 2026.2.2.1
 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
@@ -164,6 +167,16 @@ versie 2025.7.9.1
             stylesheet.innerHTML = `
 [class*='section']:first-child [class*='root'][class*='labelLeft'] {
     display: block;
+}
+[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) {
+    display: grid;
+    grid-template-columns: 55px 1fr;
+}
+[class*='section']:first-child [class*='labelContainer-'] {
+    order: 2;
+}
+[class*='section']:first-child [class*='viewContainer-'] {
+    order: 1;
 }
 `;
         } else if (!self.settings.enablelabeltextvertical && stylesheet) {
