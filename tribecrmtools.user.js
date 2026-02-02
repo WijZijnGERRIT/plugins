@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.2.2.2
+// @version      2026.2.2.3
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,10 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.2.2.3
+- checkbox voor optie 10 toegevoegd aan sectie headers
+- fix voor Asset om goed te tonen als pagina titel
 
 versie 2026.2.2.2
 - Update voor optie 10: Toon de checboxes voor de tekst ipv er onder
@@ -156,26 +160,58 @@ versie 2025.7.9.1
         return sandboxavatar ? true : false;
     };
 
+    self.applyPageTitle = function() {
+        // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
+        let restoretitle = document.body.getAttribute('restoretitle');
+        if (self.settings.enablepagetitles) {
+            let asset = document.querySelector('.MuiStack-root.textContent p');
+            if (asset?.innerText == 'Asset') {
+                while (asset && !asset.querySelector('.MuiBox-root.css-0')) {
+                    asset = asset.parentElement;
+                }
+            }
+            let newtitle = document.querySelector('[data-test-id="text-my-workplace"]')?.innerText || document.querySelector('[placeholder="Geen titel"]')?.value || document.querySelector('[data-test-id="label-entity-name"]')?.innerText || asset?.querySelector('.MuiBox-root.css-0')?.innerText || restoretitle;
+            if (newtitle != document.title) {
+                self.observer.disconnect();
+
+                if (newtitle && !restoretitle) {
+                    document.body.setAttribute('restoretitle',document.title);
+                } else if (newtitle == restoretitle) {
+                    document.body.removeAttribute('restoretitle');
+                }
+
+                if (newtitle) {
+                    document.title = newtitle;
+                }
+            }
+        } else if (!self.settings.enablepagetitles && !restoretitle) {
+            self.observer.disconnect();
+            document.title = restoretitle;
+            document.body.removeAttribute('restoretitle');
+        }
+        self.observer.connect();
+    };
+
     self.applyLabelTextVertical = function() {
         // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
         // .root-UtSA0c.labelLeft-LtqMCq display: flex
-        let stylesheet = document.querySelector('style.tribetools10');
+        let stylesheet = document.querySelector('style.tribetoolsformatvertical');
         if (self.settings.enablelabeltextvertical && !stylesheet) {
             self.observer.disconnect();
             stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.className = 'tribetools10';
+            stylesheet.className = 'tribetoolsformatvertical';
             stylesheet.innerHTML = `
-[class*='section']:first-child [class*='root'][class*='labelLeft'] {
+[class*='section']:first-child [class*='root'][class*='labelLeft']:not(:has(input[type=checkbox])) {
     display: block;
 }
 [class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) {
     display: grid;
     grid-template-columns: 55px 1fr;
 }
-[class*='section']:first-child [class*='labelContainer-'] {
+[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='labelContainer-'] {
     order: 2;
 }
-[class*='section']:first-child [class*='viewContainer-'] {
+[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='viewContainer-'] {
     order: 1;
 }
 `;
@@ -183,12 +219,187 @@ versie 2025.7.9.1
             self.observer.disconnect();
             stylesheet.remove();
         }
+
+        let sectionheader = document.querySelector("[class*='section']:first-child h6")?.parentElement;
+        if (sectionheader && !sectionheader.querySelector('.tribeverticalcheckbox')) {
+            let div = document.createElement('div');
+            div.classList.add('tribeverticalcheckbox');
+            self.addCheckbox(div,'enablelabeltextvertical',function(e) {
+                console.log('click checkbox enablelabeltextvertical');
+                self.applyLabelTextVertical();
+            });
+            let label = div.appendChild(document.createElement('label'));
+            label.classList.add('tribepointer');
+            label.append('Onder elkaar');
+            label.setAttribute('for',`id_enablelabeltextvertical`);
+            label.addEventListener('click',function(e) {
+                e.stopPropagation();
+            },false);
+            self.observer.disconnect();
+            sectionheader.appendChild(div);
+        }
+
+        self.observer.connect();
+    };
+
+    self.addCheckbox = function(parent,settingsname,clickevent) {
+        if (!parent) return;
+        parent.innerHTML = `
+<span class="MuiSwitch-root MuiSwitch-sizeMedium outercheckbox" data-component="n" data-store="n">
+  <span class="MuiButtonBase-root MuiSwitch-switchBase MuiSwitch-colorPrimary PrivateSwitchBase-root">
+    <input class="PrivateSwitchBase-input MuiSwitch-input" type="checkbox">
+    <span class="MuiSwitch-thumb"></span>
+    <span class="MuiTouchRipple-root"></span>
+  </span>
+  <span class="MuiSwitch-track"></span>
+</span>
+`;
+        let checkbox = parent.querySelector('input');
+        checkbox.id = `id_${settingsname}`;
+        checkbox.name = `tribetools${settingsname}`;
+        checkbox.checked = self.settings[settingsname];
+        if (checkbox.checked) parent.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
+        checkbox.addEventListener('click',function(e) {
+            e.stopPropagation();
+            self.settings[settingsname] = e.target.checked;
+            self.storeSettings();
+            if (e.target.checked) {
+                parent.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
+            } else {
+                parent.querySelector('.MuiSwitch-switchBase').classList.remove('Mui-checked');
+            }
+            if (typeof clickevent == 'function') {
+                clickevent(e);
+            }
+        },false);
+
+        return parent;
+    };
+
+    self.addTribeToolsStylesheet = function() {
+        let stylesheet = document.querySelector('style.tribetoolsmysettings');
+        if (stylesheet) return;
+
+        stylesheet = document.head.appendChild(document.createElement('style'));
+        stylesheet.className = 'tribetoolsmysettings';
+        stylesheet.innerHTML = `
+.tribetoolsoptions label, .tribepointer {
+    cursor: pointer;
+}
+.tribetoolsoptions button {
+    cursor: pointer;
+}
+.tribetoolsoptions input {
+    cursor: pointer;
+}
+span.outercheckbox {
+    transition: all 0.5s;
+}
+span.outercheckbox {
+    display: inline-flex;
+    overflow: hidden;
+    box-sizing: border-box;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 0;
+    vertical-align: middle;
+    width: 58px;
+    height: 38px;
+    padding: 9px 13px 9px 12px;
+}
+span.outercheckbox .MuiSwitch-switchBase {
+    left: 3px;
+    padding: 12px;
+    display: inline-flex;
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    justify-content: center;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    background-color: transparent;
+    cursor: pointer;
+    user-select: none;
+    vertical-align: middle;
+    appearance: none;
+    position: absolute;
+    top: 0px;
+    z-index: 1;
+    color: rgb(255, 255, 255);
+    outline: 0px;
+    border-width: 0px;
+    border-style: initial;
+    border-color: initial;
+    border-image: initial;
+    margin: 0px;
+    text-decoration: none;
+    border-radius: 50%;
+    transition: left 150ms cubic-bezier(0.4, 0, 0.2, 1), transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+span.outercheckbox input {
+    left: -100%;
+    width: 300%;
+}
+span.outercheckbox input {
+    cursor: inherit;
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    margin: 0px;
+    padding: 0px;
+    z-index: 1;
+}
+span.outercheckbox .MuiSwitch-thumb {
+    width: 14px;
+    height: 14px;
+    box-shadow: none;
+    color: rgb(255, 255, 255);
+}
+span.outercheckbox .MuiSwitch-thumb {
+    background-color: currentcolor;
+    border-radius: 50%;
+}
+span.outercheckbox .MuiTouchRipple-root {
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+    inset: 0px;
+    border-radius: inherit;
+}
+span.outercheckbox .MuiSwitch-track {
+    border-radius: 14px;
+    height: 100%;
+    width: 100%;
+    z-index: -1;
+    background-color: rgb(0, 0, 0);
+    opacity: 0.38;
+    transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+span.outercheckbox .MuiSwitch-switchBase.Mui-checked {
+    transform: translateX(13px);
+    color: rgb(251, 21, 118);
+}
+span.outercheckbox .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+    opacity: 1;
+}
+span.outercheckbox .Mui-checked + .MuiSwitch-track {
+    background-color: rgb(251, 21, 118);
+}
+`;
+        self.observer.disconnect();
+        document.head.appendChild(stylesheet);
         self.observer.connect();
     };
 
     self.applyChanges = function() {
         self.restoreSettings(); // update de settings
 
+        self.addTribeToolsStylesheet();
         self.applyLabelTextVertical();
 
         // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
@@ -655,48 +866,9 @@ div.popupmessage.tribetoolsdisplay {
                 self.observer.connect();
             }
         }
-        function showPageTitle() {
-            let restoretitle = document.body.getAttribute('restoretitle');
-            let newtitle = document.querySelector('[data-test-id="text-my-workplace"]')?.innerText || document.querySelector('[placeholder="Geen titel"]')?.value || document.querySelector('[data-test-id="label-entity-name"]')?.innerText || restoretitle
-            if (newtitle == document.title) return;
 
-            // stop monitoring
-            self.observer.disconnect();
-
-            if (newtitle && !restoretitle) {
-                document.body.setAttribute('restoretitle',document.title);
-            } else if (newtitle == restoretitle) {
-                document.body.removeAttribute('restoretitle');
-            }
-            if (newtitle) {
-                document.title = newtitle;
-            }
-
-            // restart monitoring
-            self.observer.connect();
-        }
-        function restorePageTitle() {
-            let restoretitle = document.body.getAttribute('restoretitle');
-            if (!restoretitle) return;
-            // stop monitoring
-            self.observer.disconnect();
-            document.title = restoretitle;
-            document.body.removeAttribute('restoretitle');
-            // restart monitoring
-            self.observer.connect();
-        }
-
-        if (self.settings.enablepacknamedisplay) {
-            showPackname();
-        } else {
-            removePackname();
-        }
         // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
-        if (self.settings.enablepagetitles) {
-            showPageTitle();
-        } else {
-            restorePageTitle();
-        }
+        self.applyPageTitle();
 
         // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
         function updateColorStylesheet(observer) {
@@ -737,126 +909,6 @@ div.popupmessage.tribetoolsdisplay {
         updateColorStylesheet();
         // toon de mogelijke opties op het user-settings scherm:
         if (window.location.href.match(/\/user-settings/) && !document.querySelector('.tribetoolsoptions') && document.querySelector('[class*=lastRow]')) {
-            function addMysettingsStylesheet() {
-                let stylesheet = document.querySelector('style.tribetoolsmysettings');
-                if (stylesheet) return;
-
-                // stop monitoring
-                self.observer.disconnect();
-                stylesheet = document.head.appendChild(document.createElement('style'));
-                stylesheet.className = 'tribetoolsmysettings';
-                stylesheet.innerHTML = `
-.tribetoolsoptions label {
-    cursor: pointer;
-}
-.tribetoolsoptions button {
-    cursor: pointer;
-}
-.tribetoolsoptions input {
-    cursor: pointer;
-}
-span.outercheckbox {
-    transition: all 0.5s;
-}
-span.outercheckbox {
-    display: inline-flex;
-    overflow: hidden;
-    box-sizing: border-box;
-    position: relative;
-    flex-shrink: 0;
-    z-index: 0;
-    vertical-align: middle;
-    width: 58px;
-    height: 38px;
-    padding: 9px 13px 9px 12px;
-}
-span.outercheckbox .MuiSwitch-switchBase {
-    left: 3px;
-    padding: 12px;
-    display: inline-flex;
-    -webkit-box-align: center;
-    align-items: center;
-    -webkit-box-pack: center;
-    justify-content: center;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-    background-color: transparent;
-    cursor: pointer;
-    user-select: none;
-    vertical-align: middle;
-    appearance: none;
-    position: absolute;
-    top: 0px;
-    z-index: 1;
-    color: rgb(255, 255, 255);
-    outline: 0px;
-    border-width: 0px;
-    border-style: initial;
-    border-color: initial;
-    border-image: initial;
-    margin: 0px;
-    text-decoration: none;
-    border-radius: 50%;
-    transition: left 150ms cubic-bezier(0.4, 0, 0.2, 1), transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-span.outercheckbox input {
-    left: -100%;
-    width: 300%;
-}
-span.outercheckbox input {
-    cursor: inherit;
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    top: 0px;
-    left: 0px;
-    margin: 0px;
-    padding: 0px;
-    z-index: 1;
-}
-span.outercheckbox .MuiSwitch-thumb {
-    width: 14px;
-    height: 14px;
-    box-shadow: none;
-    color: rgb(255, 255, 255);
-}
-span.outercheckbox .MuiSwitch-thumb {
-    background-color: currentcolor;
-    border-radius: 50%;
-}
-span.outercheckbox .MuiTouchRipple-root {
-    overflow: hidden;
-    pointer-events: none;
-    position: absolute;
-    z-index: 0;
-    inset: 0px;
-    border-radius: inherit;
-}
-span.outercheckbox .MuiSwitch-track {
-    border-radius: 14px;
-    height: 100%;
-    width: 100%;
-    z-index: -1;
-    background-color: rgb(0, 0, 0);
-    opacity: 0.38;
-    transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-span.outercheckbox .MuiSwitch-switchBase.Mui-checked {
-    transform: translateX(13px);
-    color: rgb(251, 21, 118);
-}
-span.outercheckbox .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
-    opacity: 1;
-}
-span.outercheckbox .Mui-checked + .MuiSwitch-track {
-    background-color: rgb(251, 21, 118);
-}
-`;
-                // restart monitoring
-                self.observer.connect();
-            }
 
             function createContainer() {
                 let div = document.querySelector('.MuiPaper-rounded')?.parentElement;
@@ -900,8 +952,6 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 return newdiv;
             }
 
-            addMysettingsStylesheet();
-
             // stop monitoring
             self.observer.disconnect();
 
@@ -919,30 +969,8 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 option.querySelectorAll('.MuiGrid-item')[0].classList.add('tribetoolscolumn1');
                 option.querySelectorAll('.MuiGrid-item')[1].classList.add('tribetoolscolumn2');
                 option.querySelector('.tribetoolscolumn1').innerHTML = `<label for="id_${settingsname}">${description}</label>`;
-                option.querySelector('.tribetoolscolumn2').innerHTML = `
-<span class="MuiSwitch-root MuiSwitch-sizeMedium outercheckbox" data-component="n" data-store="n">
-  <span class="MuiButtonBase-root MuiSwitch-switchBase MuiSwitch-colorPrimary PrivateSwitchBase-root">
-    <input class="PrivateSwitchBase-input MuiSwitch-input" type="checkbox">
-    <span class="MuiSwitch-thumb"></span>
-    <span class="MuiTouchRipple-root"></span>
-  </span>
-  <span class="MuiSwitch-track"></span>
-</span>
-`;
-                let checkbox = option.querySelector('input');
-                checkbox.id = `id_${settingsname}`;
-                checkbox.name = `tribetools${settingsname}`;
-                checkbox.checked = self.settings[settingsname];
-                if (checkbox.checked) option.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
-                checkbox.addEventListener('click',function(e) {
+                self.addCheckbox(option.querySelector('.tribetoolscolumn2'),settingsname,function(e) {
                     // console.log(GM_info.script.name + " - Checkbox aangepast",settingsname,checkbox.checked);
-                    self.settings[settingsname] = checkbox.checked;
-                    if (checkbox.checked) {
-                        option.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
-                    } else {
-                        option.querySelector('.MuiSwitch-switchBase').classList.remove('Mui-checked');
-                    }
-                    self.storeSettings();
                     if (typeof callback == 'function') {
                         callback();
                     }
@@ -1190,11 +1218,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 }
             });
             addChekboxOption('enablepagetitles',`Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel`,function() {
-                if (self.settings.enablepagetitles) {
-                    showPageTitle();
-                } else {
-                    restorePageTitle();
-                }
+                self.applyPageTitle();
             });
             addChekboxOption('enableexportcheckboxes',`Bewaar en herstel de status van aangevinkte opties bij een export`);
 
