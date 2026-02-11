@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         PRTG Page numbers and Clock and Enovation status
-// @version      2026.2.11.1
+// @name         PRTG tools
+// @version      2026.2.11.2
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgcountdowntimer.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgcountdowntimer.user.js
-// @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR)
+// @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR), and proxy status
 // @author       Daniel
 // @match        https://prtg.ddfr.nl/public/mapshow_simple.htm?id=*
 // @match        https://gesp.zn-man.nl/tools/plugins
