@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         PRTG Page numbers and Clock and Enovation status
-// @version      2026.2.11.1
+// @name         PRTG tools
+// @version      2026.2.11.2
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgcountdowntimer.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgcountdowntimer.user.js
-// @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR)
+// @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR), and proxy status
 // @author       Daniel
 // @match        https://prtg.ddfr.nl/public/mapshow_simple.htm?id=*
 // @match        https://gesp.zn-man.nl/tools/plugins
@@ -130,6 +130,51 @@ function wrapper(GM_info) {
 		if (!document.getElementById('clock')) return;
 		document.getElementById('clock').innerText = clock();
 	}
+
+	function updateProxyStatus() {
+        let proxystatus = document.querySelector('#proxystatus');
+		if (!proxystatus) return;
+
+        let stylesheet = document.body.appendChild(document.createElement('style'));
+        stylesheet.innerHTML = `
+#proxystatus {
+    font-size: 20px;
+    color: #FFF;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background-color: #c1a418;
+    transition: 1s;
+}
+#proxystatus.ok {
+    background-color: #2fac66;
+}
+#proxystatus.failed {
+    background-color: #e6332a;
+}
+`;
+        console.log('proxystatus ophalen');
+        proxystatus.innerHTML = 'Proxy status ophalen...';
+
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange=function() {
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                let response = JSON.parse(xmlhttp.responseText);
+                proxystatus.innerHTML = `Proxy status: ${response.statustext}`;
+                if (response.status == true) {
+                    proxystatus.classList.add('ok');
+                } else {
+                    proxystatus.classList.add('failed');
+                }
+	        } else if (xmlhttp.readyState != 4) {
+                proxystatus.innerHTML = `Proxy status wordt opgehaald`;
+			} else if (xmlhttp.status != 200) {
+                proxystatus.innerHTML = `Proxy status ophalen mislukt`;
+                proxystatus.classList.add('failed');
+            }
+        };
+		xmlhttp.open("GET","https://gesp.zn-man.nl/proxy/?json=1",true);
+		xmlhttp.send();
+    }
 
 	function updateEnovationStatus() {
 		if (!document.getElementById('enovationstatus')) return;
@@ -279,6 +324,7 @@ function wrapper(GM_info) {
 		}
 
 		updateEnovationStatus();
+        updateProxyStatus();
 	}
 
 	setup();
