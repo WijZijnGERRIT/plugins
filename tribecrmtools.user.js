@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.2.3.1
+// @version      2026.2.17.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,10 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.2.17.1
+- versie weergave toegevoegd in profiel menu
+- achtergrond kleuren keuze verbeterd
 
 versie 2026.2.3.1
 - kleine verbeteringen
@@ -107,6 +111,11 @@ versie 2025.7.9.1
         opensubheaders: {},
         exportcheckboxes: []
     };
+    self.background = { // pointer to settings.colors or settings.colorsssandbox
+        colors: [],
+        undocolors: [],
+        redocolors: []
+    };
 
     self.zoekmijninstellingen = false;
     self.observer = {};
@@ -161,6 +170,16 @@ versie 2025.7.9.1
         if (!avatars.length) return undefined;
         let sandboxavatar = [...avatars].find(avatar => avatar.innerText == 'S');
         return sandboxavatar ? true : false;
+    };
+
+    self.prepareColors = () => {
+        // references to settings:
+        let environment = self.sandboxEnvironment() ? 'sandbox' : '';
+        self.background = {
+            colors: self.settings[`colors${environment}`],
+            undocolors: self.settings[`undocolors${environment}`],
+            redocolors: self.settings[`redocolors${environment}`]
+        };
     };
 
     // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
@@ -319,7 +338,7 @@ div.popupmessage.tribetoolsdisplay {
 
             infobutton.addEventListener('click',function(e) {
                 // console.log(GM_info.script.name + " - Klik info button");
-                popupmessage.querySelector('.popupmessage-title').innerText = 'Tribe CRM tools - Mededelingen';
+                popupmessage.querySelector('.popupmessage-title').innerText = `${GM_info.script.name} - Mededelingen`;
                 if (!self.settings.bekendemededelingen.length) {
                     popupmessage.querySelector('.popupmessage-content').innerHTML = `
 <p>Er zijn geen mededelingen opgeslagen die automatisch mogen worden gesloten.</p>
@@ -375,7 +394,11 @@ div.popupmessage.tribetoolsdisplay {
                     checkbox.type = 'checkbox';
                     checkbox.className = 'autoclose';
                     checkbox.title = 'Deze mededeling altijd automatisch sluiten';
-                    closebutton.addEventListener('click',function(e) {
+                    checkbox.addEventListener('click', e => {
+                        e.stopPropagation();
+                    });
+
+                    closebutton.addEventListener('click',e => {
                         let index = self.settings.bekendemededelingen.indexOf(message);
                         if (checkbox.checked && index == -1) {
                             self.settings.bekendemededelingen.push(message);
@@ -395,54 +418,55 @@ div.popupmessage.tribetoolsdisplay {
 
         function removeKnownFooter() {
             let message = document.querySelector('#pendo-base')?.innerText;
+            if (!message) return;
+
             let closebutton = document.querySelector("#pendo-base button._pendo-close-guide");
-            if (message && closebutton) {
-                if (self.settings.bekendemededelingen.includes(message)) {
-                    // apply changes
-                    console.log(GM_info.script.name + " - Auto sluit deze bekende mededeling:",message);
-                    closebutton.click();
-                } else if (!closebutton.nextSibling || closebutton.nextSibling.className != 'autoclose') {
-                    // stop monitoring
-                    self.observer.disconnect();
+            if (!closebutton) return;
 
-                    // voeg een checkbox toe voor permanent automatisch sluiten
-                    let checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'autoclose';
-                    checkbox.title = 'Deze mededeling altijd automatisch sluiten';
-                    checkbox.style.position = 'absolute';
-                    checkbox.style.right = '10px';
-                    closebutton.parentElement.insertBefore(checkbox, closebutton.nextSibling)
-
-                    closebutton.addEventListener('click',function(e) {
-                        let index = self.settings.bekendemededelingen.indexOf(message);
-                        if (checkbox.checked && index == -1) {
-                            self.settings.bekendemededelingen.push(message);
-                            self.storeSettings();
-                            console.log(GM_info.script.name + " - Auto sluit (voortaan) deze bekende mededeling:",message);
-                        } else if (checkbox.checked && index != -1) {
-                            self.settings.bekendemededelingen.splice(index,1);
-                            self.storeSettings();
-                        }
-                    });
-
-                    // restart monitoring
-                    self.observer.connect();
-                }
-            }
-        }
-
-        function removeInfoButton() {
-            let buttonarea = document.querySelector("[aria-label=Omgeving],[aria-label=Environment]")?.parentElement?.parentElement;
-            if (buttonarea && buttonarea.querySelector('.tribetoolsinfo')) {
+            if (self.settings.bekendemededelingen.includes(message)) {
+                // apply changes
+                console.log(GM_info.script.name + " - Auto sluit deze bekende mededeling:",message);
+                closebutton.click();
+            } else if (!closebutton.nextSibling || closebutton.nextSibling.className != 'autoclose') {
                 // stop monitoring
                 self.observer.disconnect();
 
-                buttonarea.querySelector('.tribetoolsinfo').remove();
+                // voeg een checkbox toe voor permanent automatisch sluiten
+                let checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'autoclose';
+                checkbox.title = 'Deze mededeling altijd automatisch sluiten';
+                checkbox.style.position = 'absolute';
+                checkbox.style.right = '10px';
+                checkbox.addEventListener('click', e => {
+                    e.stopPropagation();
+                });
+
+                closebutton.parentElement.insertBefore(checkbox, closebutton.nextSibling)
+                closebutton.addEventListener('click', e => {
+                    let index = self.settings.bekendemededelingen.indexOf(message);
+                    if (checkbox.checked && index == -1) {
+                        self.settings.bekendemededelingen.push(message);
+                        self.storeSettings();
+                        console.log(GM_info.script.name + " - Auto sluit (voortaan) deze bekende mededeling:",message);
+                    } else if (checkbox.checked && index != -1) {
+                        self.settings.bekendemededelingen.splice(index,1);
+                        self.storeSettings();
+                    }
+                });
 
                 // restart monitoring
                 self.observer.connect();
             }
+        }
+
+        function removeInfoButton() {
+            let button = document.querySelector('.tribetoolsinfo');
+            if (!button) return;
+
+            self.observer.disconnect();
+            button.remove();
+            self.observer.connect();
         }
 
         if (self.settings.enableautoclosemessages) {
@@ -459,7 +483,6 @@ div.popupmessage.tribetoolsdisplay {
         if (self.settings.enableoverflowtitles) {
             let overflowtextelementswithouttitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && !el.title);
             if (overflowtextelementswithouttitle.length) {
-                // stop monitoring
                 self.observer.disconnect();
 
                 console.log(GM_info.script.name + " - Geef lang teksten een titel:",overflowtextelementswithouttitle.length);
@@ -470,7 +493,6 @@ div.popupmessage.tribetoolsdisplay {
         } else {
             let overflowtextelementswithtitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && el.title);
             if (overflowtextelementswithtitle.length) {
-                // stop monitoring
                 self.observer.disconnect();
 
                 console.log(GM_info.script.name + " - Herstel lange teksten, verwijder de titel:",overflowtextelementswithtitle.length);
@@ -479,8 +501,109 @@ div.popupmessage.tribetoolsdisplay {
                 });
             }
         }
-        // restart monitoring
         self.observer.connect();
+    };
+
+    // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
+    self.applySearchTab = function() {
+        if (self.settings.enablesearchtabselect) {
+            let searchinput = document.querySelector('div[data-test-id="search-bar"] input');
+            let searchtablist = document.querySelector('[class*=content] .MuiBox-root [role=tablist]');
+            let searchtabbuttons = document.querySelectorAll('[class*=content] .MuiBox-root [role=tablist] button');
+            let searchtabbuttontarget = [...searchtabbuttons].find(button => button.innerText == self.settings.searchtab);
+            let searchtabbuttonselected = [...searchtabbuttons].find(button => button.classList.contains('Mui-selected'));
+            let searchbuttonsvisible = searchtabbuttons.length > 2 && ([...searchtabbuttons].filter(el => el.innerText.match(/Relaties|Relations|Activiteiten|Activities/)).length == 2);
+            let progressbar = document.querySelector('div[data-test-id="search-bar"] [role="progressbar"]');
+            let searchresultsrelations = [...document.querySelectorAll('[class*=card] [class*=header]')].filter(header => header.innerText.match(/(Klanten|Prospects|Medewerkers|Contactpersonen)/)).length >= 1;
+            let searchresultsnothing = [...document.querySelectorAll('.MuiBox-root > div > strong')].find(strong => strong.innerText == searchinput.value);
+            // er komen resultaten, eerst onder Relaties, dit kunnen zijn: Klanten, Prospects, Medewerkers, Contactpersonen
+            // of:
+            // Géén zoekresultaten gevonden voor zoekopdracht: <strong>zoektekst</strong>
+
+            // document.querySelectorAll('[class*=SearchItemBucket_header]')
+
+            // setup radio buttons:
+            if (searchbuttonsvisible && !searchtabbuttons[0].querySelector('input[type=radio]')) {
+                self.observer.disconnect();
+
+                console.log(GM_info.script.name + " - Zoektabs gevonden en radio buttons toegevoegd");
+                let firstbutton;
+                let checkedbutton;
+                searchtabbuttons.forEach((button,buttoncnt) => {
+                    let radiobutton = button.appendChild(document.createElement("input"));
+                    radiobutton.type = "radio";
+                    radiobutton.name = "tribesearchhelpradio";
+                    radiobutton.value = button.innerText;
+                    radiobutton.title = `${radiobutton.value} als eerste weergeven`;
+                    if (radiobutton.value == self.settings.searchtab) {
+                        radiobutton.checked = true;
+                        if (!checkedbutton) checkedbutton = radiobutton;
+                    }
+                    radiobutton.addEventListener('click',e => {
+                        self.settings.searchtab = e.target.value;
+                        self.storeSettings();
+                    });
+                    if (!firstbutton) firstbutton = radiobutton;
+                });
+                // activeer de eerste radiobutton als er nog geen actief is
+                if (!checkedbutton) {
+                    firstbutton.checked = true;
+                    self.settings.searchtab = firstbutton.value;
+                    self.storeSettings();
+                }
+
+                self.observer.connect();
+            }
+
+            if (searchbuttonsvisible && searchtabbuttonselected && !progressbar && !searchtablist.classList.contains('tribetoolssearchactivated') && (searchresultsnothing || searchresultsrelations)) {
+                if (searchtabbuttonselected.innerText != self.settings.searchtab && searchtabbuttontarget) {
+                    console.log(GM_info.script.name + " - Zoektab voorkeur geselecteerd: " + self.settings.searchtab);
+
+                    self.observer.disconnect();
+                    searchtablist.classList.add('tribetoolssearchactivated');
+                    self.observer.connect();
+
+                    searchtabbuttontarget.click();
+                    searchtabbuttontarget.scrollIntoView(searchtabbuttons[0],{
+                        behavior: "smooth",
+                        block: "nearest",
+                        inline: "center"
+                    });
+                }
+            }
+        }
+    };
+
+    // 4. Zodra er een foutmelding komt bij het inloggen, geef dan het advies om cookies te verwijderen en een knop om opnieuw de Tribe app site te openen
+    self.applyLogonTips = function() {
+        if (self.settings.enablelogontips) {
+            let messageobject = document.querySelector('p.MuiTypography-root');
+            if (messageobject?.innerText == "Het is ons niet gelukt om je aan te melden. Je inloggegevens zijn onjuist." && !document.querySelector('.advice')) {
+                self.observer.disconnect();
+
+                console.log(GM_info.script.name + " - Toon inlog hulp");
+                let messagediv = messageobject.closest('div');
+                let advicediv = messagediv.appendChild(document.createElement('div'));
+                advicediv.className = 'advice';
+                advicediv.style.textAlign = 'center';
+                advicediv.style.color = 'white';
+                advicediv.innerHTML = 'Tip: Wis de cookies voor deze site en/of <button>probeer opnieuw</button>';
+                advicediv.querySelector('button').addEventListener('click',function(e) {
+                    e.preventDefault();
+                    window.location.href = "https://app.tribecrm.nl";
+                },false);
+
+                self.observer.connect();
+            }
+        }
+
+        let logincheckbox = document.querySelector('#loginForm input[type=checkbox]');
+        if (logincheckbox && !logincheckbox.checked && window.location.host == 'auth.tribecrm.nl') {
+            self.observer.disconnect();
+            // apply changes
+            logincheckbox.click();
+            self.observer.connect();
+        }
     };
 
     // 5. Toon de naam van de werkomgeving Productie of Sandbox
@@ -515,6 +638,74 @@ div.popupmessage.tribetoolsdisplay {
         self.observer.connect();
     };
 
+    // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
+    self.applyColorStylesheet = function() {
+        // Maak een nieuwe stylesheet en vergelijk daarna met bestaande stylesheet of die vervangen moet worden
+        let stylesheet = document.createElement('style');
+        stylesheet.className = "tribetoolscolors";
+
+        if (self.settings.enablebackgroundcolors) {
+            self.prepareColors();
+            stylesheet.innerHTML = `
+#root > div.MuiBox-root.css-0 {
+    background-image: linear-gradient(235deg, ${self.background.colors[0]}, ${self.background.colors[1]}, ${self.background.colors[2]}) !important;
+}
+`;
+        }
+        self.settings.colorfavorites.forEach((colors,index) => {
+            stylesheet.innerHTML += `
+.tribetoolsexample${index} {
+    background-image: linear-gradient(235deg, ${self.settings.colorfavorites[index][0]}, ${self.settings.colorfavorites[index][1]}, ${self.settings.colorfavorites[index][2]}) !important;
+}
+`;
+        });
+
+        let existingstylesheet = document.querySelector('style.tribetoolscolors');
+        if (!existingstylesheet || existingstylesheet.innerHTML != stylesheet.innerHTML) {
+            console.log(GM_info.script.name + " - Update color stylesheet",self.settings.enablebackgroundcolors);
+
+            self.observer.disconnect();
+            if (existingstylesheet) {
+                existingstylesheet.innerHTML = stylesheet.innerHTML;
+            } else {
+                document.head.appendChild(stylesheet);
+            }
+            self.observer.connect();
+        }
+    };
+
+    // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
+    self.applyCollapsedSubHeaders = function() {
+        let subheaders = document.querySelectorAll('.tribe-header-variant-subheader');
+        if (!subheaders.length) return;
+
+        subheaders.forEach((el) => {
+            let headertext = el.querySelector('h6')?.innerText;
+            if (!headertext) return;
+            if (el.classList.contains('tribetoolssubheader')) return;
+
+            self.observer.disconnect();
+            el.classList.add('tribetoolssubheader');
+            // add extra click event to detect open/close state
+            el.addEventListener('click',function(e) {
+                if (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader')) { // store open state
+                    self.settings.opensubheaders[headertext] = 1;
+                    self.storeSettings();
+                } else if (self.settings.opensubheaders[headertext]) { // closed, remove open state
+                    delete(self.settings.opensubheaders[headertext]);
+                    self.storeSettings();
+                }
+                // console.log('subheader clicked',headertext,settings.opensubheaders[headertext]?'opened':'closed');
+            },false);
+            // console.log('subheader detected',headertext,settings.opensubheaders[headertext],settings.opensubheaders[headertext] && (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader'))?'restore open':'keep same');
+            // apply stored open state (keep open if already open)
+            if (self.settings.enableopensubheaders && self.settings.opensubheaders[headertext] && (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader'))) {
+                el.click();
+            }
+        });
+        self.observer.connect();
+    };
+
     // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
     self.applyPageTitle = function() {
         let restoretitle = document.body.getAttribute('restoretitle');
@@ -544,6 +735,40 @@ div.popupmessage.tribetoolsdisplay {
             document.title = restoretitle;
             document.body.removeAttribute('restoretitle');
         }
+        self.observer.connect();
+    };
+
+    // 9. Bewaar en herstel de status van aangevinkte opties bij een export
+    self.applyExportChekboxes = function() {
+        let exportbutton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.trim().match(/^(Start export taak|Export)$/));
+        if (!exportbutton) return;
+
+        if (exportbutton.classList.contains('tribetoolsrestoreExportChekboxes')) return;
+
+        let popup = exportbutton.closest('.MuiPaper-root');
+        if (!popup) return;
+        if (!popup.querySelectorAll('input').length) return;
+
+        self.observer.disconnect();
+        exportbutton.classList.add('tribetoolsrestoreExportChekboxes');
+        Array.from(popup.querySelectorAll('input')).forEach((input,index) => {
+            if ((input.type == 'checkbox' || input.type == 'radio') && typeof self.settings.exportcheckboxes[index] == 'boolean') {
+                if (self.settings.enableexportcheckboxes && self.settings.exportcheckboxes[index] && input.checked !== self.settings.exportcheckboxes[index]) {
+                    input.click();
+                }
+            }
+        });
+        exportbutton.addEventListener('click',function(e) {
+            let popup = exportbutton.closest('.MuiPaper-root');
+            if (!popup) return;
+            self.settings.exportcheckboxes = [];
+            Array.from(popup.querySelectorAll('input')).forEach((input,index) => {
+                if (input.type == 'checkbox' || input.type == 'radio') {
+                    self.settings.exportcheckboxes[index] = input.checked;
+                }
+            });
+            self.storeSettings();
+        },false);
         self.observer.connect();
     };
 
@@ -754,9 +979,333 @@ span.outercheckbox .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
 span.outercheckbox .Mui-checked + .MuiSwitch-track {
     background-color: rgb(251, 21, 118);
 }
+.tribetoolsversion {
+    color: rgb(21, 94, 239);
+}
+.tribetoolsversion a {
+    color: inherit;
+}
+.tribetoolsversion a:hover {
+    text-decoration: underline;
+}
 `;
         self.observer.disconnect();
         document.head.appendChild(stylesheet);
+        self.observer.connect();
+    };
+
+    self.applySettings = () => {
+        // toon de mogelijke opties op het user-settings scherm:
+
+        if (!window.location.href.match(/\/user-settings/)) return; // wrong page
+        if (document.querySelector('.tribetoolsoptions')) return; // already added
+        if (!document.querySelector('[class*=lastRow]')) return; // required element not ready
+
+        function createContainer() {
+            let div = document.querySelector('.MuiPaper-rounded')?.parentElement;
+            if (!div) return;
+
+            let newdiv = document.createElement('div');
+            newdiv.className = div.className;
+            newdiv.classList.add('tribetoolsoptions');
+
+            let elevation = newdiv.appendChild(document.createElement('div'));
+            elevation.className = div.querySelector('.MuiPaper-elevation')?.className;
+
+            let container = elevation.appendChild(document.createElement('div'));
+            container.className = div.querySelector('.MuiGrid-container')?.className;
+            container.classList.add('tribetoolsoptionscontainter');
+            container.style.flexWrap = "nowrap"; // maak de regels compacter
+
+            let titlerow = container.appendChild(document.createElement('div'));
+            titlerow.className = div.querySelector('.MuiGrid-item').className;
+            titlerow.innerHTML = div.querySelector('.MuiGrid-item').innerHTML;
+            titlerow.querySelector('h6').innerText = `${GM_info.script.name} - instellingen`;
+
+            let lastrow = container.appendChild(document.createElement('div'));
+            lastrow.className = div.querySelector('[class*=lastRow]').className;
+            lastrow.classList.add('tribetoolslastrow');
+
+            let firsitemrow = div.querySelectorAll('.MuiGrid-item')[1];
+
+            let inforow = document.createElement('div');
+            inforow.className = firsitemrow.className;
+            inforow.innerHTML = firsitemrow.innerHTML;
+
+            inforow.querySelectorAll('.MuiGrid-item').forEach((el)=>{el.remove();});
+            let info = inforow.querySelector('.MuiGrid-container').appendChild(document.createElement('div'));
+            info.style.paddingLeft = '16px';
+            info.style.paddingRight = '16px';
+            info.innerHTML = GM_info.script.description.replace(/([^0-9])\./g,"$1.<br>\n");
+            info.innerHTML += `<p class="tribetoolsversion"><a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name}</a> versie ${GM_info.script.version}</p>`;
+
+            lastrow.before(info);
+
+            return newdiv;
+        }
+
+        function addChekboxOption(settingsname,description,callback) {
+            // neem de opmaak over van de eerste regel met instelligen:
+            let firsitemrow = document.querySelectorAll('.MuiPaper-rounded .MuiGrid-container .MuiGrid-item')[1];
+
+            let option = document.createElement('div');
+            option.className = firsitemrow.className;
+            option.classList.add(`tribetools${settingsname}`);
+            option.innerHTML = firsitemrow.innerHTML;
+            option.querySelectorAll('.MuiGrid-item')[0].classList.add('tribetoolscolumn1');
+            option.querySelectorAll('.MuiGrid-item')[1].classList.add('tribetoolscolumn2');
+            option.querySelector('.tribetoolscolumn1').innerHTML = `<label for="id_${settingsname}">${description}</label>`;
+            option.querySelector('.tribetoolscolumn2').innerHTML = ''; // clear content
+            option.querySelector('.tribetoolscolumn2').appendChild(self.addCheckbox(settingsname,function(e) {
+                // console.log(GM_info.script.name + " - Checkbox aangepast",settingsname,checkbox.checked);
+                if (typeof callback == 'function') {
+                    callback();
+                }
+            },false));
+
+            return document.querySelector('.tribetoolsoptionscontainter').appendChild(option);
+        }
+
+        function updateColorpickerTable() {
+            function storeColor(index,selectedColor) {
+                self.background.colors[index] = selectedColor;
+                self.storeSettings();
+                self.applyColorStylesheet();
+            }
+
+            // colorpicker
+            //  undobutton
+            //  redobutton
+            //  defaultbutton
+            //  copybutton
+            //  pastebutton
+
+            function updateColorButtons(index,undobutton,redobutton) {
+                undobutton.querySelector('.text').innerText = self.background.undocolors[index].length;
+                redobutton.querySelector('.text').innerText = self.background.redocolors[index].length;
+
+                undobutton.disabled = self.background.undocolors[index].length == 0;
+                redobutton.disabled = self.background.redocolors[index].length == 0;
+
+                colorpickertable.querySelectorAll('button.defaultbutton').forEach((el,index) => {
+                    el.disabled = self.defaultcolors[index] == self.background.colors[index];
+                });
+                colorpickertable.querySelectorAll('button.pastebutton').forEach((el,index) => {
+                    el.disabled = !self.copiedColor || self.copiedColor == self.background.colors[index];
+                });
+                colorpickertable.querySelectorAll('button.copybutton').forEach((el,index) => {
+                    el.disabled = self.copiedColor == self.background.colors[index];
+                });
+            }
+
+            let colorpickertable = document.querySelector('table.tribetoolscolorpicker');
+            if (!colorpickertable) return;
+            [...colorpickertable.rows].reverse().forEach(row => row.remove()); // remove all table rows
+
+            self.prepareColors();
+            self.background.colors.forEach((color,index) => {
+                if (!(self.background.undocolors[index] instanceof Array)) {
+                    self.background.undocolors[index] = [];
+                    self.storeSettings();
+                }
+                if (!(self.background.redocolors[index] instanceof Array)) {
+                    self.background.redocolors[index] = [];
+                    self.storeSettings();
+                }
+
+                let row = colorpickertable.appendChild(document.createElement('tr'));
+                row.innerHTML += `
+<td colspan="6">${['Kleur rechtsboven','Kleur schuin midden','Kleur linksonder'][index]}:</td>
+`;
+                let colorrow = colorpickertable.appendChild(document.createElement('tr'));
+                colorrow.innerHTML += `
+<td><input type="color"></td>
+<td><button class="undobutton" title="Herstel naar vorige waarde"><span class="icon">↶</span><span class="text"></span></button></td>
+<td><button class="redobutton" title="Redo"><span class="icon">↷</span><span class="text"></span></button></td>
+<td><button class="defaultbutton" title="Herstel naar default waarde"><span class="icon">D</span></button></td>
+<td><button class="copybutton" title="Kopieer deze waarde"><span class="icon">C</span></button></td>
+<td><button class="pastebutton" title="Plak de gekopieerde waarde"><span class="icon">P</span></button></td>
+`;
+                let colorpicker = colorrow.querySelector(`input[type=color]`);
+                let undobutton = colorrow.querySelector(`button.undobutton`);
+                let redobutton = colorrow.querySelector(`button.redobutton`);
+                let defaultbutton = colorrow.querySelector(`button.defaultbutton`);
+                let copybutton = colorrow.querySelector(`button.copybutton`);
+                let pastebutton = colorrow.querySelector(`button.pastebutton`);
+
+                updateColorButtons(index,undobutton,redobutton);
+
+                colorpicker.value = color;
+                colorpicker.addEventListener('input', e => { // kleur in dialog wordt aangepast
+                    const selectedColor = e.target.value;
+                    storeColor(index,selectedColor);
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+                colorpicker.addEventListener('change', e => { // dialog wordt gesloten
+                    const selectedColor = e.target.value;
+                    self.background.undocolors[index].push(self.background.colors[index]);
+                    self.background.redocolors[index].length = 0;
+                    storeColor(index,selectedColor);
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+                undobutton.addEventListener('click', e => {
+                    if (!self.background.undocolors[index].length) return;
+                    self.background.redocolors[index].push(self.background.colors[index]);
+                    const selectedColor = self.background.undocolors[index].pop();
+                    colorpicker.value = selectedColor;
+                    storeColor(index,selectedColor);
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+                redobutton.addEventListener('click', e => {
+                    if (!self.background.redocolors[index].length) return;
+                    self.background.undocolors[index].push(self.background.colors[index]);
+                    const selectedColor = self.background.redocolors[index].pop();
+                    colorpicker.value = selectedColor;
+                    storeColor(index,selectedColor);
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+                defaultbutton.addEventListener('click', e => {
+                    const selectedColor = self.defaultcolors[index];
+                    if (self.background.colors[index] == selectedColor) return;
+                    self.background.undocolors[index].push(self.background.colors[index]);
+                    self.background.redocolors[index].length = 0;
+                    colorpicker.value = selectedColor;
+                    storeColor(index,selectedColor);
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+                copybutton.addEventListener('click', e => {
+                    self.copiedColor = self.background.colors[index];
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+                pastebutton.addEventListener('click', e => {
+                    if (!self.copiedColor) return;
+                    const selectedColor = self.copiedColor;
+                    if (self.background.colors[index] == selectedColor) return;
+                    self.background.undocolors[index].push(self.background.colors[index]);
+                    self.background.redocolors[index].length = 0;
+                    colorpicker.value = selectedColor;
+                    storeColor(index,selectedColor);
+                    updateColorButtons(index,undobutton,redobutton);
+                },false);
+            });
+            self.applyColorStylesheet();
+        }
+
+        function updateColorFavorites(parent) {
+            let table = parent.querySelector('table.colorfavorites');
+            if (!table) {
+                table = parent.appendChild(document.createElement('table'));
+                table.className = 'colorfavorites';
+            } else {
+                table.innerHTML = '';
+            }
+
+            self.prepareColors();
+            self.settings.colorfavorites.forEach((colorset,favindex) => {
+                let row = table.appendChild(document.createElement('tr'));
+                row.innerHTML = `
+<td><div class="tribetoolsexample${favindex} selectbutton" style="width: 50px; height: 50px; display: inline-block; cursor: pointer; border: 1px solid black;"></div></td>
+<td><button class="removebutton">Verwijder</button></td>
+`;
+                let selectbutton = row.querySelector(`div.selectbutton`);
+                let removebutton = row.querySelector(`button.removebutton`);
+                let example = row.querySelector('.tribetoolsexample');
+                selectbutton.addEventListener('click', (event) => {
+                    self.background.colors.forEach((color,index) => {
+                        if ((!self.background.undocolors[index].length || self.background.undocolors[index][self.background.undocolors[index].length - 1] != color) && color != self.settings.colorfavorites[favindex][index]) self.background.undocolors[index].push(color);
+                        self.background.redocolors[index].length = 0;
+                        self.background.colors[index] = self.settings.colorfavorites[favindex][index];
+                    });
+                    self.storeSettings();
+                    updateColorpickerTable();
+                },false);
+                removebutton.addEventListener('click', (event) => {
+                    if (!confirm('Weet je zeker dat je deze favoriete kleuren combinatie wilt verwijderen?')) return;
+                    self.settings.colorfavorites.splice(favindex, 1);
+                    self.storeSettings();
+                    updateColorFavorites(parent);
+                },false);
+            });
+        }
+
+        // stop monitoring
+        self.observer.disconnect();
+        document.querySelector('.MuiPaper-rounded').parentElement.parentElement.appendChild(createContainer());
+
+        addChekboxOption('enableautoclosemessages',`Toon een optie om bekende mededelingen automatisch te sluiten. Via een extra (i) knop kun je de mededelingen alsnog lezen.`, () => {
+            self.applyInfoButton();
+        });
+
+        let backgroundcolorsoption = addChekboxOption('enablebackgroundcolors','Achtergrondkleur', () => {
+            self.applyColorStylesheet();
+        });
+
+        let backgroundcolorscolumn2 = backgroundcolorsoption.querySelector('.tribetoolscolumn2');
+        let label = backgroundcolorscolumn2.appendChild(document.createElement('label'));
+        label.innerHTML = 'Activeer';
+        label.setAttribute('for',"id_enablebackgroundcolors");
+        backgroundcolorscolumn2.appendChild(document.createElement('br'));
+        backgroundcolorscolumn2.appendChild(document.createTextNode('Kleuren overgang:'));
+        let colorpickertable = backgroundcolorscolumn2.appendChild(document.createElement('table'));
+        colorpickertable.className = 'tribetoolscolorpicker';
+        let colorstorage = backgroundcolorscolumn2.appendChild(document.createElement('div'));
+        colorstorage.innerHTML = `
+<button class="eraseundohistory">Wis undo/redo historie</button><br>
+<button class="storefavorite">Bewaar als favoriete combinatie</button>
+`;
+
+        self.prepareColors();
+        updateColorpickerTable();
+        updateColorFavorites(backgroundcolorscolumn2);
+
+        colorstorage.querySelector(`button.storefavorite`).addEventListener('click', (event) => {
+            if (self.settings.colorfavorites.filter((favorite) => favorite.join("\t") == self.background.colors.join("\t")).length) return;
+            self.settings.colorfavorites.push([...self.background.colors]);
+            self.storeSettings();
+            updateColorFavorites(backgroundcolorscolumn2);
+            self.applyColorStylesheet();
+        },false);
+        colorstorage.querySelector(`button.eraseundohistory`).addEventListener('click', (event) => {
+            if (!confirm('Weet je zeker dat je de kleuren keuze undo/redo historie wilt verwijderen?')) return;
+            self.background.undocolors.forEach(colors => { colors.length = 0; });
+            self.background.redocolors.forEach(colors => { colors.length = 0; });
+            self.storeSettings();
+            updateColorpickerTable();
+        },false);
+
+        addChekboxOption('enableoverflowtitles',`Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)`,function() {
+            self.applyOverflowtitles();
+        });
+        addChekboxOption('enablesearchtabselect',`Toon optie om een favoriete zoek tab te selecteren`);
+        addChekboxOption('enableopensubheaders',`Bewaar en herstel de status van opengeklapte velden lijstjes`);
+        addChekboxOption('enablelogontips',`Toon inlog tips en een knop zodra het inloggen mislukt door cookie problemen`);
+        addChekboxOption('enablepacknamedisplay',`Toon de naam van de Tribe omgeving (productie of sandbox)`,function() {
+            self.applyPackName();
+        });
+        addChekboxOption('enablepagetitles',`Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel`,function() {
+            self.applyPageTitle();
+        });
+        addChekboxOption('enableexportcheckboxes',`Bewaar en herstel de status van aangevinkte opties bij een export`);
+
+        // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
+        addChekboxOption('enablelabeltextvertical',`Toon labels en tekst velden onder elkaar ipv naast elkaar`,function() {
+            self.applyLabelTextVertical();
+        });
+
+        // restart monitoring
+        self.observer.connect();
+    };
+
+    self.applyPluginVersion = function() {
+        let menu = document.querySelector('.MuiStack-root.css-y9h912');
+        if (!menu) return;
+        let pluginversion = menu.querySelector('.tribetoolsversion');
+        if (pluginversion) return;
+        self.observer.disconnect();
+        pluginversion = menu.appendChild(document.createElement('span'));
+        pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
+        pluginversion.classList.add('tribetoolsversion');
+        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name}</a> versie ${GM_info.script.version}`;
         self.observer.connect();
     };
 
@@ -765,543 +1314,29 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
         self.addTribeToolsStylesheet();
 
+        // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
+        self.applyInfoButton();
+        // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
+        self.applyOverflowtitles();
+        // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
+        self.applySearchTab();
+        // 4. Zodra er een foutmelding komt bij het inloggen, geef dan het advies om cookies te verwijderen en een knop om opnieuw de Tribe app site te openen
+        self.applyLogonTips();
+        // 5. Toon de naam van de werkomgeving Productie of Sandbox
+        self.applyPackName();
+        // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
+        self.applyColorStylesheet();
+        // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
+        self.applyCollapsedSubHeaders();
+        // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
+        self.applyPageTitle();
+        // 9. Bewaar en herstel de status van aangevinkte opties bij een export
+        self.applyExportChekboxes();
         // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
         self.applyLabelTextVertical();
 
-        // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
-        self.applyInfoButton();
-
-        // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
-        self.applyOverflowtitles();
-
-        // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
-        if (self.settings.enablesearchtabselect) {
-            let searchinput = document.querySelector('div[data-test-id="search-bar"] input');
-            let searchtablist = document.querySelector('[class*=content] .MuiBox-root [role=tablist]');
-            let searchtabbuttons = document.querySelectorAll('[class*=content] .MuiBox-root [role=tablist] button');
-            let searchtabbuttontarget = [...searchtabbuttons].find(button => button.innerText == self.settings.searchtab);
-            let searchtabbuttonselected = [...searchtabbuttons].find(button => button.classList.contains('Mui-selected'));
-            let searchbuttonsvisible = searchtabbuttons.length > 2 && ([...searchtabbuttons].filter(el => el.innerText.match(/Relaties|Relations|Activiteiten|Activities/)).length == 2);
-            let progressbar = document.querySelector('div[data-test-id="search-bar"] [role="progressbar"]');
-            let searchresultsrelations = [...document.querySelectorAll('[class*=card] [class*=header]')].filter(header => header.innerText.match(/(Klanten|Prospects|Medewerkers|Contactpersonen)/)).length >= 1;
-            let searchresultsnothing = [...document.querySelectorAll('.MuiBox-root > div > strong')].find(strong => strong.innerText == searchinput.value);
-            // er komen resultaten, eerst onder Relaties, dit kunnen zijn: Klanten, Prospects, Medewerkers, Contactpersonen
-            // of:
-            // Géén zoekresultaten gevonden voor zoekopdracht: <strong>zoektekst</strong>
-
-            // document.querySelectorAll('[class*=SearchItemBucket_header]')
-
-            // setup radio buttons:
-            if (searchbuttonsvisible && !searchtabbuttons[0].querySelector('input[type=radio]')) {
-                // stop monitoring
-                self.observer.disconnect();
-
-                console.log(GM_info.script.name + " - Zoektabs gevonden en radio buttons toegevoegd");
-                let firstbutton;
-                let checkedbutton;
-                searchtabbuttons.forEach((button,buttoncnt) => {
-                    let radiobutton = button.appendChild(document.createElement("input"));
-                    radiobutton.type = "radio";
-                    radiobutton.name = "tribesearchhelpradio";
-                    radiobutton.value = button.innerText;
-                    radiobutton.title = `${radiobutton.value} als eerste weergeven`;
-                    if (radiobutton.value == self.settings.searchtab) {
-                        radiobutton.checked = true;
-                        if (!checkedbutton) checkedbutton = radiobutton;
-                    }
-                    radiobutton.addEventListener('click',e => {
-                        self.settings.searchtab = e.target.value;
-                        self.storeSettings();
-                    });
-                    if (!firstbutton) firstbutton = radiobutton;
-                });
-                // activeer de eerste radiobutton als er nog geen actief is
-                if (!checkedbutton) {
-                    firstbutton.checked = true;
-                    self.settings.searchtab = firstbutton.value;
-                    self.storeSettings();
-                }
-
-                // restart monitoring
-                self.observer.connect();
-            }
-
-            if (searchbuttonsvisible && searchtabbuttonselected && !progressbar && !searchtablist.classList.contains('tribetoolssearchactivated') && (searchresultsnothing || searchresultsrelations)) {
-                if (searchtabbuttonselected.innerText != self.settings.searchtab && searchtabbuttontarget) {
-                    console.log(GM_info.script.name + " - Zoektab voorkeur geselecteerd: " + self.settings.searchtab);
-
-                    self.observer.disconnect();
-                    searchtablist.classList.add('tribetoolssearchactivated');
-                    self.observer.connect();
-
-                    searchtabbuttontarget.click();
-                    searchtabbuttontarget.scrollIntoView(searchtabbuttons[0],{
-                        behavior: "smooth",
-                        block: "nearest",
-                        inline: "center"
-                    });
-                }
-            }
-        }
-
-        // 4. Zodra er een foutmelding komt bij het inloggen, geef dan het advies om cookies te verwijderen en een knop om opnieuw de Tribe app site te openen
-        if (self.settings.enablelogontips) {
-            let messageobject = document.querySelector('p.MuiTypography-root');
-            if (messageobject?.innerText == "Het is ons niet gelukt om je aan te melden. Je inloggegevens zijn onjuist." && !document.querySelector('.advice')) {
-                // stop monitoring
-                self.observer.disconnect();
-
-                console.log(GM_info.script.name + " - Toon inlog hulp");
-                let messagediv = messageobject.closest('div');
-                let advicediv = messagediv.appendChild(document.createElement('div'));
-                advicediv.className = 'advice';
-                advicediv.style.textAlign = 'center';
-                advicediv.style.color = 'white';
-                advicediv.innerHTML = 'Tip: Wis de cookies voor deze site en/of <button>probeer opnieuw</button>';
-                advicediv.querySelector('button').addEventListener('click',function(e) {
-                    e.preventDefault();
-                    window.location.href = "https://app.tribecrm.nl";
-                },false);
-
-                // restart monitoring
-                self.observer.connect();
-            }
-        }
-        let logincheckbox = document.querySelector('#loginForm input[type=checkbox]');
-        if (logincheckbox && !logincheckbox.checked && window.location.host == 'auth.tribecrm.nl') {
-            // stop monitoring
-            self.observer.disconnect();
-
-            // apply changes
-            logincheckbox.click();
-
-            // restart monitoring
-            self.observer.connect();
-        }
-
-        // 5. Toon de naam van de werkomgeving Productie of Sandbox
-        self.applyPackName();
-
-        // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
-        self.applyPageTitle();
-
-        // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
-        function updateColorStylesheet(observer) {
-            let stylesheet = document.createElement('style');
-            stylesheet.className = "tribetoolscolors";
-
-            if (self.settings.enablebackgroundcolors) {
-                let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                stylesheet.innerHTML = `
-#root > div.MuiBox-root.css-0 {
-    background-image: linear-gradient(235deg, ${colors[0]}, ${colors[1]}, ${colors[2]}) !important;
-}
-`;
-            }
-            self.settings.colorfavorites.forEach((colors,index) => {
-                stylesheet.innerHTML += `
-.tribetoolsexample${index} {
-    background-image: linear-gradient(235deg, ${self.settings.colorfavorites[index][0]}, ${self.settings.colorfavorites[index][1]}, ${self.settings.colorfavorites[index][2]}) !important;
-}
-`;
-            });
-
-            let existingstylesheet = document.querySelector('style.tribetoolscolors');
-            if (!existingstylesheet || existingstylesheet.innerHTML != stylesheet.innerHTML) {
-                console.log(GM_info.script.name + " - Update color stylesheet",self.settings.enablebackgroundcolors);
-
-                // pause monitoring
-                observer?.disconnect();
-                if (existingstylesheet) {
-                    existingstylesheet.innerHTML = stylesheet.innerHTML;
-                } else {
-                    document.head.appendChild(stylesheet);
-                }
-                // restart monitoring
-                observer?.connect();
-            }
-        }
-        updateColorStylesheet();
-        // toon de mogelijke opties op het user-settings scherm:
-        if (window.location.href.match(/\/user-settings/) && !document.querySelector('.tribetoolsoptions') && document.querySelector('[class*=lastRow]')) {
-
-            function createContainer() {
-                let div = document.querySelector('.MuiPaper-rounded')?.parentElement;
-                if (!div) return;
-
-                let newdiv = document.createElement('div');
-                newdiv.className = div.className;
-                newdiv.classList.add('tribetoolsoptions');
-
-                let elevation = newdiv.appendChild(document.createElement('div'));
-                elevation.className = div.querySelector('.MuiPaper-elevation')?.className;
-
-                let container = elevation.appendChild(document.createElement('div'));
-                container.className = div.querySelector('.MuiGrid-container')?.className;
-                container.style.flexWrap = "nowrap"; // maak de regels compacter
-
-                let titlerow = container.appendChild(document.createElement('div'));
-                titlerow.className = div.querySelector('.MuiGrid-item').className;
-                titlerow.innerHTML = div.querySelector('.MuiGrid-item').innerHTML;
-                titlerow.querySelector('h6').innerText = 'Tribe CRM tools - instellingen';
-
-                let lastrow = container.appendChild(document.createElement('div'));
-                lastrow.className = div.querySelector('[class*=lastRow]').className;
-                lastrow.classList.add('tribetoolslastrow');
-
-                let firsitemrow = div.querySelectorAll('.MuiGrid-item')[1];
-
-                let inforow = document.createElement('div');
-                inforow.className = firsitemrow.className;
-                inforow.innerHTML = firsitemrow.innerHTML;
-
-                inforow.querySelectorAll('.MuiGrid-item').forEach((el)=>{el.remove();});
-                let info = inforow.querySelector('.MuiGrid-container').appendChild(document.createElement('div'));
-                info.style.paddingLeft = '16px';
-                info.style.paddingRight = '16px';
-                info.innerHTML = GM_info.script.description.replace(/([^0-9])\./g,"$1.<br>\n");
-                info.innerHTML += `<p>(versie ${GM_info.script.version})</p>`;
-
-                lastrow.before(info);
-
-                return newdiv;
-            }
-
-            // stop monitoring
-            self.observer.disconnect();
-
-            let container = createContainer();
-            document.querySelector('.MuiPaper-rounded').parentElement.parentElement.appendChild(container);
-
-            function addChekboxOption(settingsname,description,callback) {
-                // neem de opmaak over van de eerste regel met instelligen:
-                let firsitemrow = document.querySelectorAll('.MuiPaper-rounded .MuiGrid-container .MuiGrid-item')[1];
-
-                let option = document.createElement('div');
-                option.className = firsitemrow.className;
-                option.classList.add(`tribetools${settingsname}`);
-                option.innerHTML = firsitemrow.innerHTML;
-                option.querySelectorAll('.MuiGrid-item')[0].classList.add('tribetoolscolumn1');
-                option.querySelectorAll('.MuiGrid-item')[1].classList.add('tribetoolscolumn2');
-                option.querySelector('.tribetoolscolumn1').innerHTML = `<label for="id_${settingsname}">${description}</label>`;
-                option.querySelector('.tribetoolscolumn2').innerHTML = ''; // clear content
-                option.querySelector('.tribetoolscolumn2').appendChild(self.addCheckbox(settingsname,function(e) {
-                    // console.log(GM_info.script.name + " - Checkbox aangepast",settingsname,checkbox.checked);
-                    if (typeof callback == 'function') {
-                        callback();
-                    }
-                },false));
-                container.querySelector('.tribetoolslastrow').before(option);
-                return option;
-            }
-
-            addChekboxOption('enableautoclosemessages',`Toon een optie om bekende mededelingen automatisch te sluiten. Via een extra (i) knop kun je de mededelingen alsnog lezen.`,function() {
-                if (self.settings.enableautoclosemessages) {
-                    addInfoButton();
-                    removeKnownInfo();
-                } else {
-                    removeInfoButton();
-                }
-            });
-            let backgroundcolorsoption = addChekboxOption('enablebackgroundcolors','Achtergrondkleur',function() {
-                // console.log('enablebackgroundcolors',settings.enablebackgroundcolors);
-                updateColorStylesheet();
-            });
-
-            function updateColorpicker(parent) {
-                function storeColor(index,selectedColor) {
-                    let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                    colors[index] = selectedColor;
-                    console.log('storeColor',index,selectedColor,colors,self.settings.colorssandbox,self.settings.colors)
-                    self.storeSettings();
-                    updateColorStylesheet();
-                }
-
-                let colortable = parent.querySelector('table.colorpicker');
-                if (!colortable) {
-                    colortable = parent.appendChild(document.createElement('table'));
-                    colortable.className = 'colorpicker';
-                } else {
-                    colortable.innerHTML = '';
-                }
-
-                function updateColorButtons(index,undobutton,redobutton) {
-                    let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                    let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                    let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-
-                    undobutton.querySelector('span').innerText = undocolors[index].length;
-                    redobutton.querySelector('span').innerText = redocolors[index].length;
-
-                    undobutton.disabled = undocolors[index].length == 0;
-                    redobutton.disabled = redocolors[index].length == 0;
-
-                    colortable.querySelectorAll('button.defaultbutton').forEach((el,index) => {
-                        el.disabled = self.defaultcolors[index] == colors[index];
-                    });
-                    colortable.querySelectorAll('button.pastebutton').forEach((el,index) => {
-                        el.disabled = !self.copiedColor || self.copiedColor == colors[index];
-                    });
-                    colortable.querySelectorAll('button.copybutton').forEach((el,index) => {
-                        el.disabled = self.copiedColor == colors[index];
-                    });
-                }
-
-                let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                colors.forEach((color,index) => {
-                    if (!(undocolors[index] instanceof Array)) {
-                        undocolors[index] = [];
-                        self.storeSettings();
-                    }
-                    if (!(redocolors[index] instanceof Array)) {
-                        redocolors[index] = [];
-                        self.storeSettings();
-                    }
-
-                    let row = colortable.appendChild(document.createElement('tr'));
-                    row.innerHTML += `
-<td colspan="3">${['rechtsboven','midden','linksonder'][index]}:</td>
-`;
-                    let colorrow = colortable.appendChild(document.createElement('tr'));
-                    colorrow.innerHTML += `
-<td><input type="color"></td><td><button class="undobutton" title="Herstel naar vorige waarde">↶ <span></span></button><button class="redobutton" title="Redo">↷ <span></span></button><button class="defaultbutton" title="Herstel naar default waarde">D</button><button class="copybutton" title="Kopieer deze waarde">C</button><button class="pastebutton" title="Plak de gekopieerde waarde">P</button></td>
-`;
-                    let colorpicker = colorrow.querySelector(`input[type=color]`);
-                    let undobutton = colorrow.querySelector(`button.undobutton`);
-                    let redobutton = colorrow.querySelector(`button.redobutton`);
-                    let defaultbutton = colorrow.querySelector(`button.defaultbutton`);
-                    let copybutton = colorrow.querySelector(`button.copybutton`);
-                    let pastebutton = colorrow.querySelector(`button.pastebutton`);
-
-                    updateColorButtons(index,undobutton,redobutton);
-
-                    colorpicker.value = color;
-                    colorpicker.addEventListener('input', (event) => { // kleur in dialog wordt aangepast
-                        const selectedColor = event.target.value;
-                        storeColor(index,selectedColor);
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                    colorpicker.addEventListener('change', (event) => { // dialog wordt gesloten
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                        let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                        const selectedColor = event.target.value;
-                        undocolors[index].push(colors[index]);
-                        redocolors[index].length = 0;
-                        storeColor(index,selectedColor);
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                    undobutton.addEventListener('click', (event) => {
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                        let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                        if (!undocolors[index].length) return;
-                        redocolors[index].push(colors[index]);
-                        const selectedColor = undocolors[index].pop();
-                        colorpicker.value = selectedColor;
-                        storeColor(index,selectedColor);
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                    redobutton.addEventListener('click', (event) => {
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                        let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                        if (!redocolors[index].length) return;
-                        undocolors[index].push(colors[index]);
-                        const selectedColor = redocolors[index].pop();
-                        colorpicker.value = selectedColor;
-                        storeColor(index,selectedColor);
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                    defaultbutton.addEventListener('click', (event) => {
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                        let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                        const selectedColor = self.defaultcolors[index];
-                        if (colors[index] == selectedColor) return;
-                        undocolors[index].push(colors[index]);
-                        redocolors[index].length = 0;
-                        colorpicker.value = selectedColor;
-                        storeColor(index,selectedColor);
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                    copybutton.addEventListener('click', (event) => {
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        self.copiedColor = colors[index];
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                    pastebutton.addEventListener('click', (event) => {
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                        let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                        if (!self.copiedColor) return;
-                        const selectedColor = self.copiedColor;
-                        if (colors[index] == selectedColor) return;
-                        undocolors[index].push(colors[index]);
-                        redocolors[index].length = 0;
-                        colorpicker.value = selectedColor;
-                        storeColor(index,selectedColor);
-                        updateColorButtons(index,undobutton,redobutton);
-                    },false);
-                });
-                updateColorStylesheet();
-            }
-            function updateColorFavorites(parent) {
-                let table = parent.querySelector('table.colorfavorites');
-                if (!table) {
-                    table = parent.appendChild(document.createElement('table'));
-                    table.className = 'colorfavorites';
-                } else {
-                    table.innerHTML = '';
-                }
-                self.settings.colorfavorites.forEach((colorset,favindex) => {
-                    let row = table.appendChild(document.createElement('tr'));
-                    row.innerHTML = `
-<td><div class="tribetoolsexample${favindex} selectbutton" style="width: 50px; height: 50px; display: inline-block; cursor: pointer; border: 1px solid black;"></div></td><td><button class="removebutton">Verwijder</button></td>
-`;
-                    let selectbutton = row.querySelector(`div.selectbutton`);
-                    let removebutton = row.querySelector(`button.removebutton`);
-                    let example = row.querySelector('.tribetoolsexample');
-                    selectbutton.addEventListener('click', (event) => {
-                        let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                        let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                        let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                        colors.forEach((color,index) => {
-                            if ((!undocolors[index].length || undocolors[index][undocolors[index].length - 1] != color) && color != self.settings.colorfavorites[favindex][index]) undocolors[index].push(color);
-                            redocolors[index].length = 0;
-                            colors[index] = self.settings.colorfavorites[favindex][index];
-                        });
-                        self.storeSettings();
-                        updateColorpicker(parent);
-                    },false);
-                    removebutton.addEventListener('click', (event) => {
-                        if (!confirm('Weet je zeker dat je deze favoriete kleuren combinatie wilt verwijderen?')) return;
-                        self.settings.colorfavorites.splice(favindex, 1);
-                        self.storeSettings();
-                        updateColorFavorites(parent);
-                    },false);
-                });
-            }
-            let backgroundcolorscolumn2 = backgroundcolorsoption.querySelector('.tribetoolscolumn2');
-            let label = backgroundcolorscolumn2.appendChild(document.createElement('label'));
-            label.innerHTML = 'Activeer';
-            label.setAttribute('for',"id_enablebackgroundcolors");
-            backgroundcolorscolumn2.appendChild(document.createElement('br'));
-            backgroundcolorscolumn2.appendChild(document.createTextNode('Kleuren overgang:'));
-            updateColorpicker(backgroundcolorscolumn2);
-            let colorstorage = backgroundcolorscolumn2.appendChild(document.createElement('div'));
-            colorstorage.innerHTML = `
-<button class="eraseundohistory">Wis undo historie</button><br>
-<button class="storefavorite">Bewaar als favoriete combinatie</button>
-`;
-            updateColorFavorites(backgroundcolorscolumn2);
-
-            colorstorage.querySelector(`button.storefavorite`).addEventListener('click', (event) => {
-                let colors = self.sandboxEnvironment() ? self.settings.colorssandbox : self.settings.colors;
-                if (self.settings.colorfavorites.filter((favorite) => favorite.join("\t") == colors.join("\t")).length) return;
-                self.settings.colorfavorites.push([...colors]);
-                self.storeSettings();
-                updateColorFavorites(backgroundcolorscolumn2);
-                updateColorStylesheet();
-            },false);
-            colorstorage.querySelector(`button.eraseundohistory`).addEventListener('click', (event) => {
-                let undocolors = self.sandboxEnvironment() ? self.settings.undocolorssandbox : self.settings.undocolors;
-                let redocolors = self.sandboxEnvironment() ? self.settings.redocolorssandbox : self.settings.redocolors;
-                if (!confirm('Weet je zeker dat je de kleuren keuze undo/redo historie wilt verwijderen?')) return;
-                undocolors.forEach(colors => { colors.length = 0; });
-                redocolors.forEach(colors => { colors.length = 0; });
-                self.storeSettings();
-                updateColorpicker(backgroundcolorscolumn2);
-            },false);
-
-            addChekboxOption('enableoverflowtitles',`Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)`,function() {
-                self.applyOverflowtitles();
-            });
-            addChekboxOption('enablesearchtabselect',`Toon optie om een favoriete zoek tab te selecteren`);
-            addChekboxOption('enableopensubheaders',`Bewaar en herstel de status van opengeklapte velden lijstjes`);
-            addChekboxOption('enablelogontips',`Toon inlog tips en een knop zodra het inloggen mislukt door cookie problemen`);
-            addChekboxOption('enablepacknamedisplay',`Toon de naam van de Tribe omgeving (productie of sandbox)`,function() {
-                self.applyPackName();
-            });
-            addChekboxOption('enablepagetitles',`Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel`,function() {
-                self.applyPageTitle();
-            });
-            addChekboxOption('enableexportcheckboxes',`Bewaar en herstel de status van aangevinkte opties bij een export`);
-
-            // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
-            addChekboxOption('enablelabeltextvertical',`Toon labels en tekst velden onder elkaar ipv naast elkaar`,function() {
-                self.applyLabelTextVertical();
-            });
-
-            // restart monitoring
-            self.observer.connect();
-        }
-
-        // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
-        function restoreCollapsedSubHeaders() {
-            let subheaders = document.querySelectorAll('.tribe-header-variant-subheader');
-            if (!subheaders.length) return;
-
-            subheaders.forEach((el) => {
-                let headertext = el.querySelector('h6')?.innerText;
-                if (!headertext) return;
-                if (el.classList.contains('tribetoolssubheader')) return;
-                self.observer.disconnect();
-                el.classList.add('tribetoolssubheader');
-                // add extra click event to detect open/close state
-                el.addEventListener('click',function(e) {
-                    if (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader')) { // store open state
-                        self.settings.opensubheaders[headertext] = 1;
-                        self.storeSettings();
-                    } else if (self.settings.opensubheaders[headertext]) { // closed, remove open state
-                        delete(self.settings.opensubheaders[headertext]);
-                        self.storeSettings();
-                    }
-                    // console.log('subheader clicked',headertext,settings.opensubheaders[headertext]?'opened':'closed');
-                },false);
-                // console.log('subheader detected',headertext,settings.opensubheaders[headertext],settings.opensubheaders[headertext] && (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader'))?'restore open':'keep same');
-                // apply stored open state (keep open if already open)
-                if (self.settings.enableopensubheaders && self.settings.opensubheaders[headertext] && (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader'))) {
-                    el.click();
-                }
-            });
-            self.observer.connect();
-        }
-        restoreCollapsedSubHeaders();
-
-        // 9. Bewaar en herstel de status van aangevinkte opties bij een export
-        function restoreExportChekboxes() {
-            let button = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.trim().match(/^(Start export taak|Export)$/));
-            if (!button) return;
-            if (button.classList.contains('tribetoolsrestoreExportChekboxes')) return;
-            let popup = button.closest('.MuiPaper-root');
-            if (!popup) return;
-            if (!popup.querySelectorAll('input').length) return;
-            self.observer.disconnect();
-            button.classList.add('tribetoolsrestoreExportChekboxes');
-            Array.from(popup.querySelectorAll('input')).forEach((input,index) => {
-                if ((input.type == 'checkbox' || input.type == 'radio') && typeof self.settings.exportcheckboxes[index] == 'boolean') {
-                    if (self.settings.enableexportcheckboxes && self.settings.exportcheckboxes[index] && input.checked !== self.settings.exportcheckboxes[index]) {
-                        input.click();
-                    }
-                }
-            });
-            button.addEventListener('click',function(e) {
-                let popup = button.closest('.MuiPaper-root');
-                if (!popup) return;
-                self.settings.exportcheckboxes = [];
-                Array.from(popup.querySelectorAll('input')).forEach((input,index) => {
-                    if (input.type == 'checkbox' || input.type == 'radio') {
-                        self.settings.exportcheckboxes[index] = input.checked;
-                    }
-                });
-                self.storeSettings();
-            },false);
-            self.observer.connect();
-        }
-        restoreExportChekboxes();
+        self.applySettings();
+        self.applyPluginVersion();
     };
 
     self.setupObserver = function(target,callback) {
