@@ -18,5 +18,7 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
 9. Bewaar en herstel de status van aangevinkte opties bij een export
 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
+11. Plaats de +Notitie knop als laatste knop
+12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
 
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
