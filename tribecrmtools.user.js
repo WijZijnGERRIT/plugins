@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.2.25.1
+// @version      2026.2.25.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.2.25.2
+- kleine fout verholpen
 
 versie 2026.2.25.1
 - nieuwe optie:
@@ -1347,7 +1350,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             stylesheet.remove();
         } else if (self.settings.enablemystyle && !stylesheet) {
             stylesheet = document.createElement('style');
-            stylesheet.className = 'tribetoolsmysettings';
+            stylesheet.className = 'tribetoolsmystyle';
             stylesheet.innerHTML = `
 .css-1qelvpp, .css-1cpsb8z {
     border: 1px solid #80808061;
