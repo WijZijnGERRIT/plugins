@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.2.17.1
+// @version      2026.2.25.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,11 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.2.25.1
+- nieuwe optie:
+11. Plaats de +Notitie knop als laatste knop
+12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
 
 versie 2026.2.17.1
 - versie weergave toegevoegd in profiel menu
@@ -109,7 +114,9 @@ versie 2025.7.9.1
         undocolorssandbox: [],
         redocolorssandbox: [],
         opensubheaders: {},
-        exportcheckboxes: []
+        exportcheckboxes: [],
+        enablebuttonorder: false,
+        enablemystyle: false
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -868,7 +875,7 @@ div.popupmessage.tribetoolsdisplay {
         let stylesheet = document.querySelector('style.tribetoolsmysettings');
         if (stylesheet) return;
 
-        stylesheet = document.head.appendChild(document.createElement('style'));
+        stylesheet = document.createElement('style');
         stylesheet.className = 'tribetoolsmysettings';
         stylesheet.innerHTML = `
 .tribetoolsoptions label, .tribepointer {
@@ -1292,6 +1299,12 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             self.applyLabelTextVertical();
         });
 
+        // 11. Plaats de +Notitie knop als laatste knop
+        addChekboxOption('enablebuttonorder',`Plaats de +Notitie knop als laatste knop`);
+
+        // 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
+        addChekboxOption('enablemystyle',`Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)`);
+
         // restart monitoring
         self.observer.connect();
     };
@@ -1306,6 +1319,46 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
         pluginversion.classList.add('tribetoolsversion');
         pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name}</a> versie ${GM_info.script.version}`;
+        self.observer.connect();
+    };
+
+    // 11. Plaats de +Notitie knop als laatste knop
+    self.applyButtonOrder = () => {
+        if (!self.settings.enablebuttonorder) return;
+        if (document.querySelector('.tribetoolsbuttonorder')) return;
+
+        let buttonnotitie = [...document.querySelectorAll('button[role=tab]')].find(button => button.querySelector('p')?.innerText == 'Notitie');
+        if (!buttonnotitie) return;
+
+        let lastbutton = [...buttonnotitie.parentElement.querySelectorAll('button[role=tab]')].reverse()[0];
+        if (buttonnotitie == lastbutton) return;
+
+        self.observer.disconnect();
+        buttonnotitie.classList.add('tribetoolsbuttonorder');
+        lastbutton.after(buttonnotitie);
+        self.observer.connect();
+    };
+
+    // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
+    self.applyMyStyle = () => {
+        let stylesheet = document.querySelector('style.tribetoolsmystyle');
+        if (!self.settings.enablemystyle && stylesheet) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (self.settings.enablemystyle && !stylesheet) {
+            stylesheet = document.createElement('style');
+            stylesheet.className = 'tribetoolsmysettings';
+            stylesheet.innerHTML = `
+.css-1qelvpp, .css-1cpsb8z {
+    border: 1px solid #80808061;
+}
+.css-3hsmx8 {
+    border-bottom: 1px solid #80808061;
+}
+`;
+            self.observer.disconnect();
+            document.head.appendChild(stylesheet);
+        }
         self.observer.connect();
     };
 
@@ -1334,6 +1387,10 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.applyExportChekboxes();
         // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
         self.applyLabelTextVertical();
+        // 11. Plaats de +Notitie knop als laatste knop
+        self.applyButtonOrder();
+        // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
+        self.applyMyStyle();
 
         self.applySettings();
         self.applyPluginVersion();
