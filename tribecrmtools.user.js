@@ -1352,10 +1352,10 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             stylesheet = document.createElement('style');
             stylesheet.className = 'tribetoolsmystyle';
             stylesheet.innerHTML = `
-.css-1qelvpp, .css-1cpsb8z {
+.section-DUA6cC:last-child div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0.MuiCard-root {
     border: 1px solid #80808061;
 }
-.css-3hsmx8 {
+.section-DUA6cC:last-child div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0.MuiCard-root > div:first-child {
     border-bottom: 1px solid #80808061;
 }
 `;
