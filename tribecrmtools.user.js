@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.2.25.2
+// @version      2026.3.2.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.3.2.1
+- vaste hoogte van de datum prikker aan de aangepaste weergave toegevoegd
 
 versie 2026.2.25.2
 - kleine fout verholpen
@@ -1357,6 +1360,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 }
 .section-DUA6cC:last-child div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0.MuiCard-root > div:first-child {
     border-bottom: 1px solid #80808061;
+}
+.DayPicker { /* voorkom resizen van de datum prikker */
+    min-height: 350px;
 }
 `;
             self.observer.disconnect();
