@@ -22,6 +22,9 @@
     self.changelog = `
 Changelog:
 
+versie 2026.3.3.1
+- updateURL gelijk gemaakt aan downloadURL
+
 versie 2026.3.2.1
 - vaste hoogte van de datum prikker aan de aangepaste weergave toegevoegd
 
