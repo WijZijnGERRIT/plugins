@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.3.1
+// @version      2026.3.9.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.3.9.1
+- basis opties in het profiel menu gezet
 
 versie 2026.3.3.1
 - updateURL gelijk gemaakt aan downloadURL
@@ -841,7 +844,7 @@ div.popupmessage.tribetoolsdisplay {
         self.observer.connect();
     };
 
-    self.addCheckbox = function(settingsname,clickevent) {
+    self.addCheckbox = function(settingsname,clickevent,idbase = 'id_') {
         let checkboxarea = document.createElement('span');
         checkboxarea.className = 'MuiSwitch-root MuiSwitch-sizeMedium outercheckbox';
         checkboxarea.setAttribute('data-component','n');
@@ -855,7 +858,7 @@ div.popupmessage.tribetoolsdisplay {
   <span class="MuiSwitch-track"></span>
 `;
         let checkbox = checkboxarea.querySelector('input');
-        checkbox.id = `id_${settingsname}`;
+        checkbox.id = `${idbase}${settingsname}`;
         checkbox.name = `tribetools${settingsname}`;
         checkbox.checked = self.settings[settingsname];
         if (checkbox.checked) checkboxarea.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
@@ -863,11 +866,15 @@ div.popupmessage.tribetoolsdisplay {
             e.stopPropagation();
             self.settings[settingsname] = e.target.checked;
             self.storeSettings();
-            if (e.target.checked) {
-                checkboxarea.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
-            } else {
-                checkboxarea.querySelector('.MuiSwitch-switchBase').classList.remove('Mui-checked');
-            }
+            // sync same named checkboxes, value and visual
+            document.querySelectorAll(`input[type=checkbox][name=tribetools${settingsname}]`).forEach(othercheckbox => {
+                othercheckbox.checked = self.settings[settingsname];
+                if (self.settings[settingsname]) {
+                    othercheckbox.closest('.MuiSwitch-switchBase').classList.add('Mui-checked');
+                } else {
+                    othercheckbox.closest('.MuiSwitch-switchBase').classList.remove('Mui-checked');
+                }
+            });
             if (typeof clickevent == 'function') {
                 clickevent(e);
             }
@@ -1061,6 +1068,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         }
 
         function addChekboxOption(settingsname,description,callback) {
+            let idbase = 'id_';
             // neem de opmaak over van de eerste regel met instelligen:
             let firsitemrow = document.querySelectorAll('.MuiPaper-rounded .MuiGrid-container .MuiGrid-item')[1];
 
@@ -1070,14 +1078,14 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             option.innerHTML = firsitemrow.innerHTML;
             option.querySelectorAll('.MuiGrid-item')[0].classList.add('tribetoolscolumn1');
             option.querySelectorAll('.MuiGrid-item')[1].classList.add('tribetoolscolumn2');
-            option.querySelector('.tribetoolscolumn1').innerHTML = `<label for="id_${settingsname}">${description}</label>`;
+            option.querySelector('.tribetoolscolumn1').innerHTML = `<label for="${idbase}${settingsname}">${description}</label>`;
             option.querySelector('.tribetoolscolumn2').innerHTML = ''; // clear content
             option.querySelector('.tribetoolscolumn2').appendChild(self.addCheckbox(settingsname,function(e) {
                 // console.log(GM_info.script.name + " - Checkbox aangepast",settingsname,checkbox.checked);
                 if (typeof callback == 'function') {
                     callback();
                 }
-            },false));
+            },idbase));
 
             return document.querySelector('.tribetoolsoptionscontainter').appendChild(option);
         }
@@ -1304,15 +1312,13 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         addChekboxOption('enableexportcheckboxes',`Bewaar en herstel de status van aangevinkte opties bij een export`);
 
         // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
-        addChekboxOption('enablelabeltextvertical',`Toon labels en tekst velden onder elkaar ipv naast elkaar`,function() {
-            self.applyLabelTextVertical();
-        });
+        addChekboxOption('enablelabeltextvertical',`Toon labels en tekst velden onder elkaar ipv naast elkaar`,self.applyLabelTextVertical);
 
         // 11. Plaats de +Notitie knop als laatste knop
         addChekboxOption('enablebuttonorder',`Plaats de +Notitie knop als laatste knop`);
 
         // 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
-        addChekboxOption('enablemystyle',`Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)`);
+        addChekboxOption('enablemystyle',`Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)`,self.applyMyStyle);
 
         // restart monitoring
         self.observer.connect();
@@ -1327,25 +1333,70 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         pluginversion = menu.appendChild(document.createElement('span'));
         pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
         pluginversion.classList.add('tribetoolsversion');
-        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name}</a> versie ${GM_info.script.version}`;
+        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name} versie ${GM_info.script.version}</a>`;
+
+        let idbase = 'idmenu_';
+        Object.entries({
+            enablesearchtabselect: 'Favoriete zoek tab',
+            enablelabeltextvertical: 'Labels en tekst onder elkaar',
+            enablebuttonorder: 'Notitie knop als laatste',
+            enablemystyle: 'Aangepaste weergave'
+        }).forEach(([setting,text]) => {
+            let menuoption = menu.appendChild(document.createElement('span'));
+            menuoption.appendChild(self.addCheckbox(setting,e =>{
+                switch(setting) {
+                    case 'enablesearchtabselect':
+                        break;
+                    case 'enablelabeltextvertical':
+                        self.applyLabelTextVertical();
+                        break;
+                    case 'enablebuttonorder':
+                        self.applyButtonOrder();
+                        break;
+                    case 'enablemystyle':
+                        self.applyMyStyle();
+                        break;
+                }
+            },idbase));
+            let label = menuoption.appendChild(document.createElement('label'));
+            label.setAttribute('for',`${idbase}${setting}`);
+            label.innerHTML = text;
+        });
+
         self.observer.connect();
     };
 
     // 11. Plaats de +Notitie knop als laatste knop
     self.applyButtonOrder = () => {
-        if (!self.settings.enablebuttonorder) return;
-        if (document.querySelector('.tribetoolsbuttonorder')) return;
+        if (self.settings.enablebuttonorder && !document.querySelector('.tribetoolsbuttonorder')) {
+            document.querySelectorAll('.MuiTabs-scroller').forEach(buttonarea => {
+                let buttonlist = buttonarea.querySelectorAll('button[role=tab]');
+                let buttonnotitieindex = [...buttonlist].findIndex(button => button.querySelector('p')?.innerText == 'Notitie');
+                if (buttonnotitieindex == -1 || buttonnotitieindex == buttonlist.length - 1) return;
 
-        let buttonnotitie = [...document.querySelectorAll('button[role=tab]')].find(button => button.querySelector('p')?.innerText == 'Notitie');
-        if (!buttonnotitie) return;
+                let buttonnotitie = buttonlist[buttonnotitieindex];
+                let lastbutton = buttonlist[buttonlist.length - 1];
 
-        let lastbutton = [...buttonnotitie.parentElement.querySelectorAll('button[role=tab]')].reverse()[0];
-        if (buttonnotitie == lastbutton) return;
-
-        self.observer.disconnect();
-        buttonnotitie.classList.add('tribetoolsbuttonorder');
-        lastbutton.after(buttonnotitie);
-        self.observer.connect();
+                self.observer.disconnect();
+                buttonnotitie.classList.add('tribetoolsbuttonorder');
+                buttonnotitie.setAttribute('tribetoolsindex',buttonnotitieindex);
+                lastbutton.after(buttonnotitie);
+                self.observer.connect();
+            });
+        } else if (!self.settings.enablebuttonorder && document.querySelector('.tribetoolsbuttonorder')) {
+            let buttonnotitie = document.querySelector('.tribetoolsbuttonorder');
+            let buttonnotitieindex = parseInt(buttonnotitie.getAttribute('tribetoolsindex'));
+            let buttonarea = buttonnotitie.closest('.MuiTabs-scroller');
+            let buttonlist = buttonarea.querySelectorAll('button[role=tab]');
+            self.observer.disconnect();
+            if (buttonnotitieindex >= 1) {
+                buttonlist[buttonnotitieindex - 1].after(buttonnotitie);
+            } else {
+                buttonlist[0].before(buttonnotitie);
+            }
+            buttonnotitie.classList.remove('tribetoolsbuttonorder');
+            self.observer.connect();
+        }
     };
 
     // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
@@ -1366,6 +1417,12 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 }
 .DayPicker { /* voorkom resizen van de datum prikker */
     min-height: 350px;
+}
+.ql-editor {
+    background-color: white;
+    border: 1px solid #80808061;
+    border-radius: 4px;
+    padding: 4px !important;
 }
 `;
             self.observer.disconnect();
