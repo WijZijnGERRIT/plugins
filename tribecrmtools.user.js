@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.9.1
+// @version      2026.3.9.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,6 +22,7 @@
     self.changelog = `
 Changelog:
 
+versie 2026.3.9.2
 versie 2026.3.9.1
 - basis opties in het profiel menu gezet
 
@@ -1418,7 +1419,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 .DayPicker { /* voorkom resizen van de datum prikker */
     min-height: 350px;
 }
-.ql-editor {
+.section-DUA6cC:last-child .ql-editor {
     background-color: white;
     border: 1px solid #80808061;
     border-radius: 4px;
