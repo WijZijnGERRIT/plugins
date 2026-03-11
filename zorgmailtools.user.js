@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         ZorgMail tools
 // @namespace    https://gesp.zn-man.nl/
-// @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.meta.js
+// @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.2.11.1
+// @version      2026.3.11.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
+// @match        https://enovation.formstack.com/forms/untitled_form
 // @match        https://adresboek.zorgmail.nl/*
 // @match        https://enovationplatform.com/*
 // @match        https://account.passageid.nl/auth/realms/passageid/login-actions/*
@@ -25,6 +26,14 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+version 2026.3.11.1
+- zorgmail adresboek kopieer knoppen toegevoegd
+- zorgmail adresboek aangeklikte details zichtbaar gemaakt in de pop-up
+
+version 2026.2.18.1
+- nieuwe functie, toon een knop om het mutatie formulier te vullen met nep gegevens >> helaas, dit werkt niet
+  https://enovation.formstack.com/forms/untitled_form
+
 version 2026.2.10.1
 - samenvoeging van 7 eerder gemaakte plugins en code herschreven en aangepast waar nodig:
 
@@ -507,6 +516,132 @@ version 1.0.0.20230516.144500
         self.observer.connect();
     };
 
+    self.applyAdresboekButtons = () => {
+        // https://adresboek.zorgmail.nl/*
+        if (!document.querySelector('style.zorgmailtoolsadresboek')) {
+            self.observer.disconnect();
+            let stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'zorgmailtoolsadresboek';
+            stylesheet.innerHTML = `
+.zorgmailtoolsresultclicked {
+    border: 1px solid #107cb1;
+}
+.zorgmailtoolscard .card-text {
+    padding-right: .5rem;
+    padding-left: .5rem;
+}
+.zorgmailtoolscopyicon {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+}
+.zorgmailtoolscopyicon::before {
+    content: url('data:image/svg+xml;charset=UTF-8,<svg class="copyicon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M480 400L288 400C279.2 400 272 392.8 272 384L272 128C272 119.2 279.2 112 288 112L421.5 112C425.7 112 429.8 113.7 432.8 116.7L491.3 175.2C494.3 178.2 496 182.3 496 186.5L496 384C496 392.8 488.8 400 480 400zM288 448L480 448C515.3 448 544 419.3 544 384L544 186.5C544 169.5 537.3 153.2 525.3 141.2L466.7 82.7C454.7 70.7 438.5 64 421.5 64L288 64C252.7 64 224 92.7 224 128L224 384C224 419.3 252.7 448 288 448zM160 192C124.7 192 96 220.7 96 256L96 512C96 547.3 124.7 576 160 576L352 576C387.3 576 416 547.3 416 512L416 496L368 496L368 512C368 520.8 360.8 528 352 528L160 528C151.2 528 144 520.8 144 512L144 256C144 247.2 151.2 240 160 240L176 240L176 192L160 192z"/></svg>');
+}
+`;
+        }
+
+        document.querySelectorAll('a.addressbook-result:not(.zorgmailtoolsbuttons)').forEach(result => {
+            let mailbox = result.querySelector('.result-title span[_ngcontent-c1]');
+            if (!mailbox) return;
+
+            self.observer.disconnect();
+
+            result.classList.add('zorgmailtoolsbuttons');
+
+            [
+                {text:'Mailbox',alert:'Deze mailbox is gekopieerd:',copytext: mailbox.innerText},
+                {text:'Klantnaam',alert:'Deze klantnaam is gekopieerd:',copytext: result.querySelector('.result-title').childNodes[0].textContent.replace(/^\s+/,'').replace(/\s+$/,'')},
+                {text:'Details',alert:'Deze details zijn gekopieerd:',copytext: result.querySelector('.result-info').innerText},
+            ].forEach(buttondetails => {
+                let copyicon = document.createElement('span');
+                copyicon.className = 'zorgmailtoolscopyicon';
+
+                let button = document.createElement('button');
+                button.className = 'btn btn-primary btn-icon ng-star-inserted';
+                button.textContent = buttondetails.text;
+                button.prepend(copyicon);
+                button.addEventListener('click',e => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.zorgmailtoolsresultclicked').forEach(element => {
+                        element.classList.remove('zorgmailtoolsresultclicked');
+                    });
+                    result.classList.add('zorgmailtoolsresultclicked');
+
+                    let text = buttondetails.copytext;
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert(`${buttondetails.alert}\n\n${text}\n\nDeze kun je nu ergens plakken.`);
+                    }).catch(() => {
+                        alert("Het kopieren werkt helaas niet.");
+                    });
+                });
+                result.querySelector('.action-buttons').prepend(button);
+            });
+        });
+
+        document.querySelectorAll('a.addressbook-result:not(.zorgmailtoolsresult)').forEach(result => {
+            self.observer.disconnect();
+            result.classList.add('zorgmailtoolsresult');
+            result.addEventListener('click',e => {
+                document.querySelectorAll('.zorgmailtoolsresultclicked').forEach(element => {
+                    element.classList.remove('zorgmailtoolsresultclicked');
+                });
+                result.classList.add('zorgmailtoolsresultclicked');
+            });
+        });
+
+        document.querySelectorAll('address-details-modal .modal-body').forEach(modal => {
+            let clickedrow = document.querySelector('.zorgmailtoolsresultclicked');
+            if (!clickedrow || !clickedrow.querySelector('.result-title span[_ngcontent-c1]')) return;
+
+            let card = modal.querySelector('.zorgmailtoolscard');
+            if (card && card.getAttribute('mailbox') == clickedrow.querySelector('.result-title span[_ngcontent-c1]').innerText) return;
+
+            self.observer.disconnect();
+
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'card';
+                card.classList.add('zorgmailtoolscard');
+                let cardblock = card.appendChild(document.createElement('div'));
+                cardblock.className = 'card-block';
+                modal.prepend(card);
+                let cardtitle = cardblock.appendChild(document.createElement('div'));
+                cardtitle.className = 'card-title';
+                cardtitle.innerText = 'Details';
+                let cardtext = cardblock.appendChild(document.createElement('div'));
+                cardtext.className = 'card-text';
+            }
+
+            card.setAttribute('mailbox',clickedrow.querySelector('.result-title span[_ngcontent-c1]').innerText);
+            let cardtext = card.querySelector('.card-text');
+            cardtext.innerHTML = clickedrow.querySelector('.result-info').innerHTML;
+            cardtext.querySelectorAll('button').forEach(button => button.remove());
+        });
+
+        document.querySelectorAll('address-details-modal .modal-footer').forEach(modalfooter => {
+            if (modalfooter.classList.contains('zorgmailtoolsfooter')) return;
+
+            self.observer.disconnect();
+
+            modalfooter.classList.add('zorgmailtoolsfooter');
+            let copybutton = document.createElement('button');
+            copybutton.className = 'btn btn-primary btn-icon ng-star-inserted';
+            copybutton.textContent = 'Kopieer details';
+            copybutton.addEventListener('click',e => {
+                e.stopPropagation();
+                let text = document.querySelector('.zorgmailtoolsresultclicked .result-info').innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    alert(`Deze details zijn gekopieerd:\n\n${text}\n\nDeze kun je nu ergens plakken.`);
+                }).catch(() => {
+                    alert("Het kopieren werkt helaas niet.");
+                });
+            });
+            modalfooter.prepend(copybutton);
+        });
+        self.observer.connect();
+    };
+
     self.applyMCenterKeepalive = () => {
         // https://mcenter.zorgmail.nl/*
 
@@ -773,6 +908,36 @@ version 1.0.0.20230516.144500
         self.observer.connect();
     };
 
+    self.applyFormFillerButton = () => {
+        return; // helaas, dit werkt niet
+
+        // https://enovation.formstack.com/forms/untitled_form
+        document.querySelectorAll('#fsHeaderImage:not(.zorgmailtoolsbutton)').forEach(header => {
+            self.observer.disconnect();
+            header.classList.add('zorgmailtoolsbutton');
+            let button = header.appendChild(document.createElement('button'));
+            button.textContent = 'Vul het formulier';
+            button.addEventListener('click', e => {
+                document.querySelectorAll('input[required]').forEach(input => {
+                    let value = undefined;
+                    switch (input.name) {
+                        case 'field154041193':
+                            value = 'GERRIT Servicedesk TEST formulier'; // Organisatienaam
+                            break;
+                    }
+                    if (value) {
+                        input.focus();
+                        setTimeout(() => {
+                            input.value = value;
+                            input.setAttribute('value',value);
+                        });
+                    }
+                });
+            },false);
+        });
+        self.observer.connect();
+    };
+
     self.applyChanges = function() {
         //console.log('applyChanges');
         self.applyStylesheet();
@@ -781,10 +946,12 @@ version 1.0.0.20230516.144500
         self.applyPasswordHelper();
         self.applyPlatformKeepalive();
         self.applyAdresboekKeepalive();
+        self.applyAdresboekButtons();
         self.applyMCenterKeepalive();
         self.applyMCenterButtons();
         self.applyMCenterCopySearchResults();
         self.applyMCenterSearchForm();
+        self.applyFormFillerButton();
     };
 
     self.setupObserver = function(target,callback) {
