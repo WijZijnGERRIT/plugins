@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.9.2
+// @version      2026.3.12.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.3.12.1
+- fix voor de versie menu aanpassingen
 
 versie 2026.3.9.2
 versie 2026.3.9.1
@@ -1326,7 +1329,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     };
 
     self.applyPluginVersion = function() {
-        let menu = document.querySelector('.MuiStack-root.css-y9h912');
+        let menuitems = document.querySelectorAll('ul[role=menu]');
+        if (menuitems.length < 3) return;
+        let menu = menuitems[1].closest('.MuiStack-root'); // document.querySelector('.MuiStack-root.css-y9h912');
         if (!menu) return;
         let pluginversion = menu.querySelector('.tribetoolsversion');
         if (pluginversion) return;
