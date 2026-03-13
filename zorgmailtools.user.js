@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.3.13.1
+// @version      2026.3.13.2
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,7 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+version 2026.3.13.2
 version 2026.3.13.1
 - zorgmail adresboek kopieer animatie toegevoegd
 
@@ -565,9 +566,9 @@ version 1.0.0.20230516.144500
 
             result.classList.add('zorgmailtoolsbuttons');
             let resulttitle = document.createElement('span');
-            //resulttitle.innerText = result.querySelector('.result-title').childNodes[0].textContent.replace(/^\s+/,'').replace(/\s+$/,'') + "\n";
-            //result.querySelector('.result-title').removeChild(result.querySelector('.result-title').childNodes[0]);
-            //result.querySelector('.result-title').prepend(resulttitle);
+            resulttitle.innerHTML = result.querySelector('.result-title').childNodes[0].textContent.replace(/^\s+/,'').replace(/\s+$/,'') + "\n";
+            result.querySelector('.result-title').removeChild(result.querySelector('.result-title').childNodes[0]);
+            result.querySelector('.result-title').prepend(resulttitle);
 
             [
                 {text:'Mailbox', element: mailbox, alert:'Deze mailbox is gekopieerd:',copytext: mailbox.innerText },
