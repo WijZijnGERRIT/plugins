@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.12.1
+// @version      2026.3.18.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,14 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.3.18.1
+- nieuwe aanpassing:
+14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+
+versie 2026.3.17.1
+- nieuwe aanpassing:
+13. Breng een geselecteerd list item in een lijst in beeld
 
 versie 2026.3.12.1
 - fix voor de versie menu aanpassingen
@@ -132,7 +140,9 @@ versie 2025.7.9.1
         opensubheaders: {},
         exportcheckboxes: [],
         enablebuttonorder: false,
-        enablemystyle: false
+        enablemystyle: false,
+        enablescrollcenter: true,
+        enablelistblur: true
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -739,7 +749,7 @@ div.popupmessage.tribetoolsdisplay {
                     asset = asset.parentElement;
                 }
             }
-            let newtitle = document.querySelector('[data-test-id="text-my-workplace"]')?.innerText || document.querySelector('[placeholder="Geen titel"]')?.value || document.querySelector('[data-test-id="label-entity-name"]')?.innerText || asset?.querySelector('.MuiBox-root.css-0')?.innerText || restoretitle;
+            let newtitle = document.querySelector('[data-test-id="text-my-workplace"]')?.innerText || document.querySelector('[placeholder="Geen titel"]')?.value || document.querySelector('[data-test-id="label-entity-name"]')?.innerText || asset?.querySelector('.MuiBox-root.css-0')?.innerText || document.querySelector('.MuiCard-root h6')?.innerText || restoretitle;
             if (newtitle != document.title) {
                 self.observer.disconnect();
 
@@ -1324,6 +1334,12 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
         addChekboxOption('enablemystyle',`Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)`,self.applyMyStyle);
 
+        // 13. Breng een geselecteerd list item in een lijst in beeld
+        addChekboxOption('enablescrollcenter',`Breng een geselecteerd list item in een lijst in beeld`);
+
+        // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+        addChekboxOption('enablelistblur',`Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)`);
+
         // restart monitoring
         self.observer.connect();
     };
@@ -1437,6 +1453,18 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
+    // 13. Breng een geselecteerd list item in een lijst in beeld
+    self.applyScrollCenter = () => {
+        if (self.settings.enablescrollcenter) return;
+        document.querySelectorAll('.Mui-selected:not(.tribetoolsscroll)').forEach(selected => {
+            if (!(selected instanceof HTMLLIElement)) return;
+            self.observer.disconnect();
+            selected.classList.add('(.tribetoolsscroll');
+            selected.scrollIntoView({behavior: "smooth", block: "center"})
+        });
+        self.observer.connect();
+    };
+
     self.applyChanges = function() {
         self.restoreSettings(); // update de settings
 
@@ -1466,6 +1494,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.applyButtonOrder();
         // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
         self.applyMyStyle();
+
+        // 13. Breng een geselecteerd item in een lijst in beeld
+        self.applyScrollCenter();
 
         self.applySettings();
         self.applyPluginVersion();
@@ -1500,7 +1531,19 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
+    // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+    self.setupBlur = function() {
+        window.addEventListener('blur', () => {
+            if (!self.settings.enablelistblur) return;
+            if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
+                console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
+                document.activeElement.blur();
+            }
+        });
+    };
+
     self.monitorTribeChanges = function() {
+        self.setupBlur();
         self.setupObserver(document.documentElement || document.body,self.applyChanges);
     };
 
