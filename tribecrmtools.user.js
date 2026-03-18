@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.18.1
+// @version      2026.3.18.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,13 +22,16 @@
     self.changelog = `
 Changelog:
 
+versie 2026.3.18.2
+- fix voor selectie streep bij verplaatste +Notitie knop
+
 versie 2026.3.18.1
 - nieuwe aanpassing:
 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
 
 versie 2026.3.17.1
 - nieuwe aanpassing:
-13. Breng een geselecteerd list item in een lijst in beeld
+13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
 
 versie 2026.3.12.1
 - fix voor de versie menu aanpassingen
@@ -354,6 +357,14 @@ div.popupmessage.tribetoolsdisplay {
 .popupmessage-content button:hover {
     text-decoration: none;
     background-color: rgba(251, 21, 118, 0.08);
+}
+.tribetoolsbuttonorder .Mui-selected {
+    border-bottom: 3px solid rgb(186, 11, 75);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+}
+.tribetoolsbuttonorder .MuiTabs-indicator {
+    display: none;
 }
 `;
 
@@ -1334,8 +1345,8 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
         addChekboxOption('enablemystyle',`Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)`,self.applyMyStyle);
 
-        // 13. Breng een geselecteerd list item in een lijst in beeld
-        addChekboxOption('enablescrollcenter',`Breng een geselecteerd list item in een lijst in beeld`);
+        // 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
+        addChekboxOption('enablescrollcenter',`Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)`);
 
         // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
         addChekboxOption('enablelistblur',`Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)`);
@@ -1400,23 +1411,25 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 let lastbutton = buttonlist[buttonlist.length - 1];
 
                 self.observer.disconnect();
-                buttonnotitie.classList.add('tribetoolsbuttonorder');
+                buttonarea.classList.add('tribetoolsbuttonorder');
                 buttonnotitie.setAttribute('tribetoolsindex',buttonnotitieindex);
                 lastbutton.after(buttonnotitie);
+
                 self.observer.connect();
             });
-        } else if (!self.settings.enablebuttonorder && document.querySelector('.tribetoolsbuttonorder')) {
-            let buttonnotitie = document.querySelector('.tribetoolsbuttonorder');
-            let buttonnotitieindex = parseInt(buttonnotitie.getAttribute('tribetoolsindex'));
-            let buttonarea = buttonnotitie.closest('.MuiTabs-scroller');
+        } else if (!self.settings.enablebuttonorder && document.querySelector('.tribetoolsbuttonorder') && document.querySelector('.tribetoolsbuttonorder [tribetoolsindex]')) {
+            let buttonarea = document.querySelector('.tribetoolsbuttonorder');
             let buttonlist = buttonarea.querySelectorAll('button[role=tab]');
+            let buttonnotitie = buttonarea.querySelector('[tribetoolsindex]');
+            let buttonnotitieindex = parseInt(buttonnotitie.getAttribute('tribetoolsindex'));
+
             self.observer.disconnect();
             if (buttonnotitieindex >= 1) {
                 buttonlist[buttonnotitieindex - 1].after(buttonnotitie);
-            } else {
+            } else { // before first button:
                 buttonlist[0].before(buttonnotitie);
             }
-            buttonnotitie.classList.remove('tribetoolsbuttonorder');
+            buttonarea.classList.remove('tribetoolsbuttonorder');
             self.observer.connect();
         }
     };
@@ -1453,7 +1466,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
-    // 13. Breng een geselecteerd list item in een lijst in beeld
+    // 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
     self.applyScrollCenter = () => {
         if (self.settings.enablescrollcenter) return;
         document.querySelectorAll('.Mui-selected:not(.tribetoolsscroll)').forEach(selected => {
@@ -1495,7 +1508,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
         self.applyMyStyle();
 
-        // 13. Breng een geselecteerd item in een lijst in beeld
+        // 13. Breng een geselecteerd item in een lijst in beeld (handig bij uren en minuten)
         self.applyScrollCenter();
 
         self.applySettings();
