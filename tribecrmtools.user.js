@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.18.2
+// @version      2026.3.18.3
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.3.18.3
+- fix voor geselecteerd list item in beeld brengen
 
 versie 2026.3.18.2
 - fix voor selectie streep bij verplaatste +Notitie knop
@@ -1468,9 +1471,8 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     // 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
     self.applyScrollCenter = () => {
-        if (self.settings.enablescrollcenter) return;
-        document.querySelectorAll('.Mui-selected:not(.tribetoolsscroll)').forEach(selected => {
-            if (!(selected instanceof HTMLLIElement)) return;
+        if (!self.settings.enablescrollcenter) return;
+        document.querySelectorAll('li.Mui-selected:not(.tribetoolsscroll)').forEach(selected => {
             self.observer.disconnect();
             selected.classList.add('(.tribetoolsscroll');
             selected.scrollIntoView({behavior: "smooth", block: "center"})
@@ -1509,6 +1511,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.applyMyStyle();
 
         // 13. Breng een geselecteerd item in een lijst in beeld (handig bij uren en minuten)
+        if (!self.observer.isconnected) {
+            console.log('NOT self.observer.isconnected');
+        }
         self.applyScrollCenter();
 
         self.applySettings();
