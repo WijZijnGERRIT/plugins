@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.18.4
+// @version      2026.3.20.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,8 +22,8 @@
     self.changelog = `
 Changelog:
 
-versie 2026.3.18.4
-- toon de Onder elkaar switch alleen als er velden zijn waarvoor dit van toepassing is
+versie 2026.3.20.1
+- fix voor achtergrond kleur element aanduiding
 
 versie 2026.3.18.3
 - fix voor geselecteerd list item in beeld brengen
@@ -697,7 +697,7 @@ div.popupmessage.tribetoolsdisplay {
         if (self.settings.enablebackgroundcolors) {
             self.prepareColors();
             stylesheet.innerHTML = `
-#root > div.MuiBox-root.css-0 {
+#root > div.MuiBox-root[class*=css-] > .MuiBox-root.css-0, div[style*=linear-gradient] {
     background-image: linear-gradient(235deg, ${self.background.colors[0]}, ${self.background.colors[1]}, ${self.background.colors[2]}) !important;
 }
 `;
@@ -852,26 +852,24 @@ div.popupmessage.tribetoolsdisplay {
 
         let sectionheader = document.querySelector("[class*='section']:first-child h6")?.parentElement;
         if (sectionheader && !sectionheader.querySelector('.tribeverticalcheckbox')) {
-            if (document.querySelector("[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='labelContainer-']")) {
-                let div = document.createElement('div');
-                div.classList.add('tribeverticalcheckbox');
-                div.appendChild(self.addCheckbox('enablelabeltextvertical',function(e) {
-                    console.log('click checkbox enablelabeltextvertical');
-                    self.applyLabelTextVertical();
-                }));
-                let label = div.appendChild(document.createElement('label'));
-                label.classList.add('tribepointer');
-                label.classList.add('css-oqtjxi');
-                label.append('Onder elkaar');
-                label.setAttribute('for',`id_enablelabeltextvertical`);
-                self.observer.disconnect();
-                sectionheader.appendChild(div);
+            let div = document.createElement('div');
+            div.classList.add('tribeverticalcheckbox');
+            div.appendChild(self.addCheckbox('enablelabeltextvertical',function(e) {
+                console.log('click checkbox enablelabeltextvertical');
+                self.applyLabelTextVertical();
+            }));
+            let label = div.appendChild(document.createElement('label'));
+            label.classList.add('tribepointer');
+            label.classList.add('css-oqtjxi');
+            label.append('Onder elkaar');
+            label.setAttribute('for',`id_enablelabeltextvertical`);
+            self.observer.disconnect();
+            sectionheader.appendChild(div);
 
-                div.title = 'Toon de labels en tekstvelden onder elkaar';
-                div.addEventListener('click',e => {
-                    e.stopPropagation();
-                },false);
-            }
+            div.title = 'Toon de labels en tekstvelden onder elkaar';
+            div.addEventListener('click',e => {
+                e.stopPropagation();
+            },false);
         }
 
         self.observer.connect();
