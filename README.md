@@ -36,3 +36,6 @@ EDI routering adres aanklikbaar om snel naar die mailbox te kunnen gaan.
 
 7. Passage ID
 Vink automatisch het '30 dagen' vakje aan.
+
+8. Adresboek kopieer knoppen
+In het ZorgMail adresboek zijn per resultaat 3 knoppen toegevoegd om eenvoudig de details, de mailbox of de klantnaam te kopieren.
