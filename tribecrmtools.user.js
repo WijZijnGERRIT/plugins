@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.20.2
+// @version      2026.3.23.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.3.23.1
+- fix voor geselecteerd list item in een lijst in beeld brengen
 
 versie 2026.3.20.2
 - toon de Onder elkaar switch alleen als er velden zijn waarvoor dit van toepassing is
@@ -1480,9 +1483,11 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     // 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
     self.applyScrollCenter = () => {
         if (!self.settings.enablescrollcenter) return;
-        document.querySelectorAll('li.Mui-selected:not(.tribetoolsscroll)').forEach(selected => {
+        document.querySelectorAll('li.Mui-selected').forEach(selected => {
+            let list = selected.closest('[class^=root-]');
+            if (!list || list.classList.contains('tribetoolsscroll') || !selected.innerText) return;
             self.observer.disconnect();
-            selected.classList.add('(.tribetoolsscroll');
+            list.classList.add('tribetoolsscroll');
             selected.scrollIntoView({behavior: "smooth", block: "center"})
         });
         self.observer.connect();
@@ -1517,15 +1522,22 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.applyButtonOrder();
         // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
         self.applyMyStyle();
-
         // 13. Breng een geselecteerd item in een lijst in beeld (handig bij uren en minuten)
-        if (!self.observer.isconnected) {
-            console.log('NOT self.observer.isconnected');
-        }
         self.applyScrollCenter();
 
         self.applySettings();
         self.applyPluginVersion();
+    };
+
+    // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+    self.setupBlur = function() {
+        window.addEventListener('blur', () => {
+            if (!self.settings.enablelistblur) return;
+            if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
+                console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
+                document.activeElement.blur();
+            }
+        });
     };
 
     self.setupObserver = function(target,callback) {
@@ -1555,17 +1567,6 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // activate monitoring
         callback();
         self.observer.connect();
-    };
-
-    // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
-    self.setupBlur = function() {
-        window.addEventListener('blur', () => {
-            if (!self.settings.enablelistblur) return;
-            if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
-                console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
-                document.activeElement.blur();
-            }
-        });
     };
 
     self.monitorTribeChanges = function() {
