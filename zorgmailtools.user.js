@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.3.13.3
+// @version      2026.3.23.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,10 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+version 2026.3.23.1
+- zorgmail kopieer knoppen ook in details overzicht geplaatst
+- zorgmail kopieer knoppen de gerrit kleur gegeven zodat duidelijk is dat dit niet standaard bij het adresboek hoort
+
 version 2026.3.13.3
 version 2026.3.13.2
 version 2026.3.13.1
@@ -556,41 +560,35 @@ version 1.0.0.20230516.144500
 .result-title .muted {
     margin-left: 10px;
 }
+.zorgmailtoolscopybutton {
+    background-color: #38c499 !important;
+}
 `;
         }
 
-        document.querySelectorAll('a.addressbook-result:not(.zorgmailtoolsbuttons)').forEach(result => {
-            let mailbox = result.querySelector('.result-title span[_ngcontent-c1]');
-            if (!mailbox) return;
+        function createcopybutton(searchresultrow,buttondetails) {
+            let copyicon = document.createElement('span');
+            copyicon.className = 'zorgmailtoolscopyicon';
 
-            self.observer.disconnect();
+            let button = document.createElement('button');
+            button.className = 'btn btn-primary btn-icon ng-star-inserted';
+            button.classList.add('zorgmailtoolscopybutton');
+            button.textContent = buttondetails.text;
+            button.prepend(copyicon);
+            button.addEventListener('click',e => {
+                e.stopPropagation();
 
-            result.classList.add('zorgmailtoolsbuttons');
-            let resulttitle = document.createElement('span');
-            resulttitle.innerHTML = result.querySelector('.result-title').childNodes[0].textContent.replace(/^\s+/,'').replace(/\s+$/,'') + "\n";
-            result.querySelector('.result-title').removeChild(result.querySelector('.result-title').childNodes[0]);
-            result.querySelector('.result-title').prepend(resulttitle);
-
-            [
-                {text:'Mailbox', element: mailbox, alert:'Deze mailbox is gekopieerd:',copytext: mailbox.innerText },
-                {text:'Klantnaam', element: resulttitle, alert:'Deze klantnaam is gekopieerd:',copytext: resulttitle.textContent },
-                {text:'Details', element: result.querySelector('.result-info'), alert:'Deze details zijn gekopieerd:',copytext: result.querySelector('.result-info').innerText},
-            ].forEach(buttondetails => {
-                let copyicon = document.createElement('span');
-                copyicon.className = 'zorgmailtoolscopyicon';
-
-                let button = document.createElement('button');
-                button.className = 'btn btn-primary btn-icon ng-star-inserted';
-                button.textContent = buttondetails.text;
-                button.prepend(copyicon);
-                button.addEventListener('click',e => {
-                    e.stopPropagation();
+                let text = buttondetails.copytext;
+                navigator.clipboard.writeText(text).then(() => {
+                    // alert(`${buttondetails.alert}\n\n${text}\n\nDeze kun je nu ergens plakken.`);
 
                     document.querySelectorAll('.zorgmailtoolsdoneicon').forEach(element => element.classList.remove('zorgmailtoolsdoneicon'));
                     copyicon.classList.add('zorgmailtoolsdoneicon');
 
-                    document.querySelectorAll('.zorgmailtoolsresultclicked').forEach(element => element.classList.remove('zorgmailtoolsresultclicked'));
-                    result.classList.add('zorgmailtoolsresultclicked');
+                    if (searchresultrow) {
+                        document.querySelectorAll('.zorgmailtoolsresultclicked').forEach(element => element.classList.remove('zorgmailtoolsresultclicked'));
+                        searchresultrow.classList.add('zorgmailtoolsresultclicked');
+                    }
 
                     document.querySelectorAll('.zorgmailtoolscopied').forEach(element => element.classList.remove('zorgmailtoolscopied'));
                     document.querySelectorAll('.zorgmailtoolscopiedanimation').forEach(element => element.classList.remove('zorgmailtoolscopiedanimation'));
@@ -598,26 +596,44 @@ version 1.0.0.20230516.144500
                     setTimeout(() => {
                         buttondetails.element.classList.add('zorgmailtoolscopiedanimation');
                     },1000);
-
-                    let text = buttondetails.copytext;
-                    navigator.clipboard.writeText(text).then(() => {
-                        // alert(`${buttondetails.alert}\n\n${text}\n\nDeze kun je nu ergens plakken.`);
-                    }).catch(() => {
-                        alert("Het kopieren werkt helaas niet.");
-                    });
+                }).catch(() => {
+                    alert("Het kopieren werkt helaas niet.");
                 });
-                result.querySelector('.action-buttons').prepend(button);
+            });
+
+            return button;
+        }
+
+        document.querySelectorAll('a.addressbook-result:not(.zorgmailtoolsbuttons)').forEach(searchresultrow => {
+            let mailbox = searchresultrow.querySelector('.result-title span[_ngcontent-c1]');
+            if (!mailbox) return;
+
+            self.observer.disconnect();
+
+            searchresultrow.classList.add('zorgmailtoolsbuttons');
+            let resulttitle = document.createElement('span');
+            resulttitle.innerHTML = searchresultrow.querySelector('.result-title').childNodes[0].textContent.replace(/^\s+/,'').replace(/\s+$/,'') + "\n";
+            searchresultrow.querySelector('.result-title').removeChild(searchresultrow.querySelector('.result-title').childNodes[0]);
+            searchresultrow.querySelector('.result-title').prepend(resulttitle);
+
+            [
+                {text:'Mailbox', element: mailbox, alert:'Deze mailbox is gekopieerd:',copytext: mailbox.innerText },
+                {text:'Klantnaam', element: resulttitle, alert:'Deze klantnaam is gekopieerd:',copytext: resulttitle.textContent },
+                {text:'Details', element: searchresultrow.querySelector('.result-info'), alert:'Deze details zijn gekopieerd:',copytext: searchresultrow.querySelector('.result-info').innerText},
+            ].forEach(buttondetails => {
+                let button = createcopybutton(searchresultrow,buttondetails);
+                searchresultrow.querySelector('.action-buttons').prepend(button);
             });
         });
 
-        document.querySelectorAll('a.addressbook-result:not(.zorgmailtoolsresult)').forEach(result => {
+        document.querySelectorAll('a.addressbook-result:not(.zorgmailtoolsresult)').forEach(searchresultrow => {
             self.observer.disconnect();
-            result.classList.add('zorgmailtoolsresult');
-            result.addEventListener('click',e => {
+            searchresultrow.classList.add('zorgmailtoolsresult');
+            searchresultrow.addEventListener('click',e => {
                 document.querySelectorAll('.zorgmailtoolsresultclicked').forEach(element => {
                     element.classList.remove('zorgmailtoolsresultclicked');
                 });
-                result.classList.add('zorgmailtoolsresultclicked');
+                searchresultrow.classList.add('zorgmailtoolsresultclicked');
             });
         });
 
@@ -652,24 +668,22 @@ version 1.0.0.20230516.144500
 
         document.querySelectorAll('address-details-modal .modal-footer').forEach(modalfooter => {
             if (modalfooter.classList.contains('zorgmailtoolsfooter')) return;
-
+            let card = document.querySelector('address-details-modal .modal-body .zorgmailtoolscard');
+            if (!card) return;
             self.observer.disconnect();
 
             modalfooter.classList.add('zorgmailtoolsfooter');
-            let copybutton = document.createElement('button');
-            copybutton.className = 'btn btn-primary btn-icon ng-star-inserted';
-            copybutton.textContent = 'Kopieer details';
-            copybutton.addEventListener('click',e => {
-                e.stopPropagation();
-                let text = document.querySelector('.zorgmailtoolsresultclicked .result-info').innerText;
-                navigator.clipboard.writeText(text).then(() => {
-                    alert(`Deze details zijn gekopieerd:\n\n${text}\n\nDeze kun je nu ergens plakken.`);
-                }).catch(() => {
-                    alert("Het kopieren werkt helaas niet.");
-                });
+
+            [
+                {text:'Mailbox', element: card.querySelector('.result-title span[_ngcontent-c1]'), alert:'Deze mailbox is gekopieerd:',copytext: card.querySelector('.result-title span[_ngcontent-c1]').innerText },
+                {text:'Klantnaam', element: card.querySelector('.result-title span'), alert:'Deze klantnaam is gekopieerd:',copytext: card.querySelector('.result-title span').textContent },
+                {text:'Details', element: card.querySelector('.card-text'), alert:'Deze details zijn gekopieerd:',copytext: card.querySelector('.card-text').innerText},
+            ].forEach(buttondetails => {
+                let button = createcopybutton(undefined,buttondetails);
+                modalfooter.prepend(button);
             });
-            modalfooter.prepend(copybutton);
         });
+
         self.observer.connect();
     };
 
