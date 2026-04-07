@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.3.23.1
+// @version      2026.4.7.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,10 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.4.7.1
+- nieuwe aanpassing:
+15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
 
 versie 2026.3.23.1
 - fix voor geselecteerd list item in een lijst in beeld brengen
@@ -157,7 +161,8 @@ versie 2025.7.9.1
         enablebuttonorder: false,
         enablemystyle: false,
         enablescrollcenter: true,
-        enablelistblur: true
+        enablelistblur: true,
+        advancedswitchchecked: false
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -1493,6 +1498,20 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
+    // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
+    self.applyAdvancedFields = () => {
+        let advancedswitch = document.querySelector('p:has(span[data-test-label="Generic.Advanced"])')?.previousSibling?.querySelector('input[type=checkbox]:not(.tribetoolsadvanced)');
+        if (!advancedswitch) return;
+        advancedswitch.classList.add('tribetoolsadvanced');
+        if (!advancedswitch.checked && self.settings.advancedswitchchecked) {
+            advancedswitch.click();
+        }
+        advancedswitch.addEventListener('click', e => {
+            self.settings.advancedswitchchecked = advancedswitch.checked;
+            self.storeSettings();
+        },false);
+    };
+
     self.applyChanges = function() {
         self.restoreSettings(); // update de settings
 
@@ -1524,6 +1543,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.applyMyStyle();
         // 13. Breng een geselecteerd item in een lijst in beeld (handig bij uren en minuten)
         self.applyScrollCenter();
+
+        // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
+        self.applyAdvancedFields();
 
         self.applySettings();
         self.applyPluginVersion();
