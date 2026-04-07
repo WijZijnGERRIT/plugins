@@ -22,5 +22,6 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
 
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
