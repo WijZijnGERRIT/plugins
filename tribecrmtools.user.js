@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.4.8.1
+// @version      2026.4.8.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.4.8.2
+- pagina titel element prioriteit volgorde aangepast
 
 versie 2026.4.8.1
 - wis de two factor invoer als daar een e-mail adres in staat
@@ -792,7 +795,7 @@ div.popupmessage.tribetoolsdisplay {
                     asset = asset.parentElement;
                 }
             }
-            let newtitle = document.querySelector('[data-test-id="text-my-workplace"]')?.innerText || document.querySelector('[placeholder="Geen titel"]')?.value || document.querySelector('[data-test-id="label-entity-name"]')?.innerText || asset?.querySelector('.MuiBox-root.css-0')?.innerText || document.querySelector('.MuiCard-root h6')?.innerText || restoretitle;
+            let newtitle = document.querySelector('[data-test-id="label-entity-name"]')?.innerText || document.querySelector('[data-test-id="text-my-workplace"]')?.innerText || document.querySelector('[placeholder="Geen titel"]')?.value || asset?.querySelector('.MuiBox-root.css-0')?.innerText || document.querySelector('.MuiCard-root h6')?.innerText || restoretitle;
             if (newtitle != document.title) {
                 self.observer.disconnect();
 
