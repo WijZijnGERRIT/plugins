@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.4.7.1
+// @version      2026.4.8.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.4.8.1
+- wis de two factor invoer als daar een e-mail adres in staat
 
 versie 2026.4.7.1
 - nieuwe aanpassing:
@@ -653,8 +656,6 @@ div.popupmessage.tribetoolsdisplay {
                     e.preventDefault();
                     window.location.href = "https://app.tribecrm.nl";
                 },false);
-
-                self.observer.connect();
             }
         }
 
@@ -663,8 +664,22 @@ div.popupmessage.tribetoolsdisplay {
             self.observer.disconnect();
             // apply changes
             logincheckbox.click();
-            self.observer.connect();
         }
+
+        // wis de two factor invoer als daar een e-mail adres in staat
+        let twofactorinput = document.querySelector('input[name=two_factor_token]:not(.tribetoolstwofactorinput)');
+        if (twofactorinput) {
+            self.observer.disconnect();
+            twofactorinput.classList.add('tribetoolstwofactorinput');
+            let starttime = new Date().getTime();
+            let intervalid = setInterval(() => {
+                if (twofactorinput.value.match(/@/)) {
+                    // console.log('clear twofactorinput',new Date().getTime() - starttime,twofactorinput.value);
+                    twofactorinput.value = '';
+                }
+            },10);
+        }
+        self.observer.connect();
     };
 
     // 5. Toon de naam van de werkomgeving Productie of Sandbox
@@ -1502,6 +1517,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     self.applyAdvancedFields = () => {
         let advancedswitch = document.querySelector('p:has(span[data-test-label="Generic.Advanced"])')?.previousSibling?.querySelector('input[type=checkbox]:not(.tribetoolsadvanced)');
         if (!advancedswitch) return;
+        self.observer.disconnect();
         advancedswitch.classList.add('tribetoolsadvanced');
         if (!advancedswitch.checked && self.settings.advancedswitchchecked) {
             advancedswitch.click();
@@ -1510,6 +1526,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             self.settings.advancedswitchchecked = advancedswitch.checked;
             self.storeSettings();
         },false);
+        self.observer.connect();
     };
 
     self.applyChanges = function() {
