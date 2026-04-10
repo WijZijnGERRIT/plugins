@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.4.10.1
+// @version      2026.4.10.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -12,15 +12,20 @@
 // @grant        none
 // ==/UserScript==
 
-(function() {
+(() => {
     'use strict';
 
-    if (typeof window.plugin !== 'function') window.plugin = function() {};
-    window.plugin.tribetools = function() {};
-    let self = window.plugin.tribetools;
+    if (typeof window.plugin !== 'function') window.plugin = () => {};
+    let self = window.plugin.tribetools = () => {};
 
     self.changelog = `
 Changelog:
+
+versie 2026.4.10.2
+- nieuwe aanpassing:
+16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+- in de code de function term overal vervangen door haakjes
+- observer functie vernieuwd
 
 versie 2026.4.10.1
 - pagina titel element check verwijder elk ZeroWidthSpace teken
@@ -171,7 +176,8 @@ versie 2025.7.9.1
         enablemystyle: false,
         enablescrollcenter: true,
         enablelistblur: true,
-        advancedswitchchecked: false
+        advancedswitchchecked: false,
+        enabletrimclipboard: false
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -182,14 +188,14 @@ versie 2025.7.9.1
     self.zoekmijninstellingen = false;
     self.observer = {};
 
-    self.clickMySettings = function() {
+    self.clickMySettings = () => {
         if (!self.zoekmijninstellingen) return;
         let menuitemmijninstellingen = Array.from(document.querySelectorAll("[role=menuitem]")).filter(el=>el.innerText.match(/(Mijn account|My account)/));
         if (!menuitemmijninstellingen.length) return;
         self.zoekmijninstellingen = false;
         menuitemmijninstellingen[0].click();
     };
-    self.openMySettings = function() {
+    self.openMySettings = () => {
         if (window.location.href.match(/\/user-settings/)) {
             self.zoekmijninstellingen = false;
             return;
@@ -198,7 +204,7 @@ versie 2025.7.9.1
         if (!accountbutton) return;
         accountbutton.click();
         self.zoekmijninstellingen = true;
-        setTimeout(function() {
+        setTimeout(() => {
             if (!self.zoekmijninstellingen) return;
             console.log(GM_info.script.name + " - Menu item Mijn account/My account niet gevonden");
             self.zoekmijninstellingen = false;
@@ -206,10 +212,10 @@ versie 2025.7.9.1
         self.clickMySettings();
     };
 
-    self.storeSettings = function() {
+    self.storeSettings = () => {
         localStorage.setItem('tribecrmtools',JSON.stringify(self.settings));
     };
-    self.restoreSettings = function() {
+    self.restoreSettings = () => {
         let data = localStorage.getItem('tribecrmtools');
         if (data) data = JSON.parse(data);
         if (!data || typeof data != 'object' || data instanceof Array) {
@@ -227,7 +233,7 @@ versie 2025.7.9.1
         }
     };
 
-    self.sandboxEnvironment = function() {
+    self.sandboxEnvironment = () => {
         let avatars = document.querySelectorAll('.MuiStack-root.css-1uwrsdx .MuiAvatar-root');
         if (!avatars.length) return undefined;
         let sandboxavatar = [...avatars].find(avatar => avatar.innerText == 'S');
@@ -245,7 +251,7 @@ versie 2025.7.9.1
     };
 
     // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
-    self.applyInfoButton = function() {
+    self.applyInfoButton = () => {
         function addInfoButton() {
             if (document.querySelector('.tribetoolsinfo')) return;
             //let buttonarea = document.querySelector("[aria-label=Omgeving]")?.parentElement?.parentElement;
@@ -402,11 +408,11 @@ div.popupmessage.tribetoolsdisplay {
     <div class="popupmessage-content"></div>
 </div>
 `;
-            popupmessage.querySelector('span.popupmessage-close').addEventListener('click',function(e) {
+            popupmessage.querySelector('span.popupmessage-close').addEventListener('click', e => {
                 popupmessage.classList.remove('tribetoolsdisplay');
             },false);
 
-            infobutton.addEventListener('click',function(e) {
+            infobutton.addEventListener('click', e => {
                 // console.log(GM_info.script.name + " - Klik info button");
                 popupmessage.querySelector('.popupmessage-title').innerText = `${GM_info.script.name} - Mededelingen`;
                 if (!self.settings.bekendemededelingen.length) {
@@ -421,7 +427,7 @@ div.popupmessage.tribetoolsdisplay {
 <p>${self.settings.bekendemededelingen.map(el => { return el.replace(/\nSluiten/,'').replace(/\nMeer lezen/,'').replace(/\n\n+/gs,"\n").replace(/\n$/gs,"\n"); }).join("</p><p>").replace(/\n/g,"<br>\n")}
 <p align="center"><button class="removeallmessages">Alles wissen</button> <button class="settings">Instellingen</button> <button class="closedialog">Sluiten</button></p>
 `;
-                    popupmessage.querySelector('button.removeallmessages').addEventListener('click',function(e) {
+                    popupmessage.querySelector('button.removeallmessages').addEventListener('click', e => {
                         if (confirm(`Mededelingen zullen opnieuw getoond worden als ze nog actief zijn.\n\nAlles wissen?`)) {
                             self.settings.bekendemededelingen = [];
                             self.storeSettings();
@@ -429,11 +435,11 @@ div.popupmessage.tribetoolsdisplay {
                         }
                     },false);
                 }
-                popupmessage.querySelector('button.settings').addEventListener('click',function(e) {
+                popupmessage.querySelector('button.settings').addEventListener('click', e => {
                     popupmessage.classList.remove('tribetoolsdisplay');
                     self.openMySettings();
                 },false);
-                popupmessage.querySelector('button.closedialog').addEventListener('click',function(e) {
+                popupmessage.querySelector('button.closedialog').addEventListener('click', e => {
                     popupmessage.classList.remove('tribetoolsdisplay');
                 },false);
                 popupmessage.classList.add('tribetoolsdisplay');
@@ -549,7 +555,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
-    self.applyOverflowtitles = function() {
+    self.applyOverflowtitles = () => {
         if (self.settings.enableoverflowtitles) {
             let overflowtextelementswithouttitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && !el.title);
             if (overflowtextelementswithouttitle.length) {
@@ -575,7 +581,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
-    self.applySearchTab = function() {
+    self.applySearchTab = () => {
         if (self.settings.enablesearchtabselect) {
             let searchinput = document.querySelector('div[data-test-id="search-bar"] input');
             let searchtablist = document.querySelector('[class*=content] .MuiBox-root [role=tablist]');
@@ -645,7 +651,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 4. Zodra er een foutmelding komt bij het inloggen, geef dan het advies om cookies te verwijderen en een knop om opnieuw de Tribe app site te openen
-    self.applyLogonTips = function() {
+    self.applyLogonTips = () => {
         if (self.settings.enablelogontips) {
             let messageobject = document.querySelector('p.MuiTypography-root');
             if (messageobject?.innerText == "Het is ons niet gelukt om je aan te melden. Je inloggegevens zijn onjuist." && !document.querySelector('.advice')) {
@@ -658,7 +664,7 @@ div.popupmessage.tribetoolsdisplay {
                 advicediv.style.textAlign = 'center';
                 advicediv.style.color = 'white';
                 advicediv.innerHTML = 'Tip: Wis de cookies voor deze site en/of <button>probeer opnieuw</button>';
-                advicediv.querySelector('button').addEventListener('click',function(e) {
+                advicediv.querySelector('button').addEventListener('click', e => {
                     e.preventDefault();
                     window.location.href = "https://app.tribecrm.nl";
                 },false);
@@ -689,7 +695,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 5. Toon de naam van de werkomgeving Productie of Sandbox
-    self.applyPackName = function() {
+    self.applyPackName = () => {
         if (typeof self.sandboxEnvironment() != 'boolean') return;
 
         let packname = document.querySelector('.tribetoolspackname');
@@ -721,7 +727,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
-    self.applyColorStylesheet = function() {
+    self.applyColorStylesheet = () => {
         // Maak een nieuwe stylesheet en vergelijk daarna met bestaande stylesheet of die vervangen moet worden
         let stylesheet = document.createElement('style');
         stylesheet.className = "tribetoolscolors";
@@ -757,7 +763,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
-    self.applyCollapsedSubHeaders = function() {
+    self.applyCollapsedSubHeaders = () => {
         let subheaders = document.querySelectorAll('.tribe-header-variant-subheader');
         if (!subheaders.length) return;
 
@@ -769,7 +775,7 @@ div.popupmessage.tribetoolsdisplay {
             self.observer.disconnect();
             el.classList.add('tribetoolssubheader');
             // add extra click event to detect open/close state
-            el.addEventListener('click',function(e) {
+            el.addEventListener('click', e => {
                 if (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader')) { // store open state
                     self.settings.opensubheaders[headertext] = 1;
                     self.storeSettings();
@@ -789,7 +795,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
-    self.applyPageTitle = function() {
+    self.applyPageTitle = () => {
         let restoretitle = document.body.getAttribute('restoretitle');
         if (self.settings.enablepagetitles) {
             let asset = document.querySelector('.MuiStack-root.textContent p');
@@ -821,7 +827,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 9. Bewaar en herstel de status van aangevinkte opties bij een export
-    self.applyExportChekboxes = function() {
+    self.applyExportChekboxes = () => {
         let exportbutton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.trim().match(/^(Start export taak|Export)$/));
         if (!exportbutton) return;
 
@@ -840,7 +846,7 @@ div.popupmessage.tribetoolsdisplay {
                 }
             }
         });
-        exportbutton.addEventListener('click',function(e) {
+        exportbutton.addEventListener('click', e => {
             let popup = exportbutton.closest('.MuiPaper-root');
             if (!popup) return;
             self.settings.exportcheckboxes = [];
@@ -855,7 +861,7 @@ div.popupmessage.tribetoolsdisplay {
     };
 
     // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
-    self.applyLabelTextVertical = function() {
+    self.applyLabelTextVertical = () => {
         // .root-UtSA0c.labelLeft-LtqMCq display: flex
         let stylesheet = document.querySelector('style.tribetoolsformatvertical');
         if (self.settings.enablelabeltextvertical && !stylesheet) {
@@ -887,8 +893,8 @@ div.popupmessage.tribetoolsdisplay {
             if (document.querySelector("[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='labelContainer-']")) {
                 let div = document.createElement('div');
                 div.classList.add('tribeverticalcheckbox');
-                div.appendChild(self.addCheckbox('enablelabeltextvertical',function(e) {
-                    console.log('click checkbox enablelabeltextvertical');
+                div.appendChild(self.addCheckbox('enablelabeltextvertical', e => {
+                    // console.log('click checkbox enablelabeltextvertical');
                     self.applyLabelTextVertical();
                 }));
                 let label = div.appendChild(document.createElement('label'));
@@ -909,7 +915,20 @@ div.popupmessage.tribetoolsdisplay {
         self.observer.connect();
     };
 
-    self.addCheckbox = function(settingsname,clickevent,idbase = 'id_') {
+    self.updateCheckboxes = () => {
+        document.querySelectorAll('input[type=checkbox][name^=tribetools]').forEach(checkbox => {
+            let settingsname = checkbox.name.replace(/^tribetools/,'');
+            if (!(settingsname in self.settings)) return;
+            checkbox.checked = self.settings[settingsname];
+            if (self.settings[settingsname]) {
+                checkbox.closest('.MuiSwitch-switchBase').classList.add('Mui-checked');
+            } else {
+                checkbox.closest('.MuiSwitch-switchBase').classList.remove('Mui-checked');
+            }
+        });
+    };
+
+    self.addCheckbox = (settingsname,clickevent,idbase = 'id_') => {
         let checkboxarea = document.createElement('span');
         checkboxarea.className = 'MuiSwitch-root MuiSwitch-sizeMedium outercheckbox';
         checkboxarea.setAttribute('data-component','n');
@@ -952,7 +971,7 @@ div.popupmessage.tribetoolsdisplay {
         return checkboxarea;
     };
 
-    self.addTribeToolsStylesheet = function() {
+    self.addTribeToolsStylesheet = () => {
         let stylesheet = document.querySelector('style.tribetoolsmysettings');
         if (stylesheet) return;
 
@@ -1145,7 +1164,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             option.querySelectorAll('.MuiGrid-item')[1].classList.add('tribetoolscolumn2');
             option.querySelector('.tribetoolscolumn1').innerHTML = `<label for="${idbase}${settingsname}">${description}</label>`;
             option.querySelector('.tribetoolscolumn2').innerHTML = ''; // clear content
-            option.querySelector('.tribetoolscolumn2').appendChild(self.addCheckbox(settingsname,function(e) {
+            option.querySelector('.tribetoolscolumn2').appendChild(self.addCheckbox(settingsname, e => {
                 // console.log(GM_info.script.name + " - Checkbox aangepast",settingsname,checkbox.checked);
                 if (typeof callback == 'function') {
                     callback();
@@ -1362,16 +1381,16 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             updateColorpickerTable();
         },false);
 
-        addChekboxOption('enableoverflowtitles',`Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)`,function() {
+        addChekboxOption('enableoverflowtitles',`Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)`, () => {
             self.applyOverflowtitles();
         });
         addChekboxOption('enablesearchtabselect',`Toon optie om een favoriete zoek tab te selecteren`);
         addChekboxOption('enableopensubheaders',`Bewaar en herstel de status van opengeklapte velden lijstjes`);
         addChekboxOption('enablelogontips',`Toon inlog tips en een knop zodra het inloggen mislukt door cookie problemen`);
-        addChekboxOption('enablepacknamedisplay',`Toon de naam van de Tribe omgeving (productie of sandbox)`,function() {
+        addChekboxOption('enablepacknamedisplay',`Toon de naam van de Tribe omgeving (productie of sandbox)`, () => {
             self.applyPackName();
         });
-        addChekboxOption('enablepagetitles',`Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel`,function() {
+        addChekboxOption('enablepagetitles',`Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel`, () => {
             self.applyPageTitle();
         });
         addChekboxOption('enableexportcheckboxes',`Bewaar en herstel de status van aangevinkte opties bij een export`);
@@ -1391,11 +1410,14 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
         addChekboxOption('enablelistblur',`Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)`);
 
+        // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+        addChekboxOption('enabletrimclipboard',`Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)`,self.setupClipboardAccess);
+
         // restart monitoring
         self.observer.connect();
     };
 
-    self.applyPluginVersion = function() {
+    self.applyPluginVersion = () => {
         let menuitems = document.querySelectorAll('ul[role=menu]');
         if (menuitems.length < 3) return;
         let menu = menuitems[1].closest('.MuiStack-root'); // document.querySelector('.MuiStack-root.css-y9h912');
@@ -1535,7 +1557,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
-    self.applyChanges = function() {
+    self.applyChanges = () => {
         self.restoreSettings(); // update de settings
 
         self.addTribeToolsStylesheet();
@@ -1574,48 +1596,122 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.applyPluginVersion();
     };
 
-    // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
-    self.setupBlur = function() {
+    self.setupBlur = () => {
         window.addEventListener('blur', () => {
-            if (!self.settings.enablelistblur) return;
-            if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
-                console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
-                document.activeElement.blur();
+            // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+            if (self.settings.enablelistblur) {
+                if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
+                    console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
+                    document.activeElement.blur();
+                }
             }
+        },false);
+    };
+
+    self.setupClipboardAccess = () => {
+        if (!self.settings.enabletrimclipboard) return;
+        // trigger clipboard access
+        navigator.clipboard.readText().then((text) => {
+            console.log(`${GM_info.script.name} - Clipboard lees toegang is mogelijk`);
+            setTimeout(() => {
+                navigator.clipboard.writeText(text).then(() => {
+                    console.log(`${GM_info.script.name} - Clipboard schrijf toegang is mogelijk`);
+                }).catch(() => {
+                    alert("Test clipboard toegang\n\nSchrijf toegang tot het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
+                    self.settings.enabletrimclipboard = false;
+                    self.storeSettings();
+                    self.updateCheckboxes();
+                });
+            },1000);
+        }).catch(() => {
+            alert("Test clipboard toegang\n\nLees toegang van het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
+            self.settings.enabletrimclipboard = false;
+            self.storeSettings();
+            self.updateCheckboxes();
         });
     };
 
-    self.setupObserver = function(target,callback) {
-        // then run when changes are detected:
-        self.observer = new MutationObserver(() => {
-            callback();
-        });
+    self.setupFocus = () => {
+        window.addEventListener('focus', async () => {
+            // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+            if (self.settings.enabletrimclipboard) {
+                let items = await navigator.clipboard.read();
+                for (const item of items) {
+                    if (item.types.includes("text/html")) {
+                        // doe niks met rich-text
+                        const blob = await item.getType("text/html");
+                        const blobText = await blob.text();
+                        // console.log(blob);
+                        // console.log(blobText);
+                    } else {
+                        // check clipboard, trim spaces
+                        navigator.clipboard.readText().then((text) => {
+                            if (text.trim() != text) {
+                                navigator.clipboard.writeText(text.trim()).then(() => {
+                                    console.log(`${GM_info.script.name} - Spaties gewist voor en achter de gekopieerde platte tekst`);
+                                }).catch(() => {
+                                    self.settings.enabletrimclipboard = false;
+                                    self.storeSettings();
+                                });
+                            };
+                        }).catch(() => {
+                            self.settings.enabletrimclipboard = false;
+                            self.storeSettings();
+                        });
+                    }
+                }
+            }
+        },false);
+    };
 
-        // add extra function:
-        self.observer.target = target;
-        self.observer.config = {
+    self.createObserver = (target,callback) => {
+        if (!target || typeof callback != 'function') return;
+
+        // Run callback when changes are detected in target:
+        let observer = new MutationObserver(callback);
+        observer.config = {
             subtree: true,
             childList: true,
         }
-        self.observer.isconnected = false;
-        self.observer.original_disconnect = self.observer.disconnect.bind(self.observer);
-        self.observer.disconnect = function() {
-            if (!this.isconnected) return;
-            this.isconnected = false;
-            this.original_disconnect();
+
+        // add extra elements:
+        observer.target = target;
+        observer.callback = callback;
+
+        // keep track of connection status:
+        observer.isconnected = false;
+        observer.original_disconnect = observer.disconnect.bind(observer);
+        observer.disconnect = () => {
+            if (!observer.isconnected) return;
+            observer.isconnected = false;
+            observer.original_disconnect();
         }
-        self.observer.connect = function() {
-            if (this.isconnected) return;
-            this.isconnected = true;
-            this.observe(this.target,this.config);
+
+        observer.original_observe = observer.observe.bind(observer);
+        observer.observe = () => {
+            if (observer.isconnected) return;
+            observer.isconnected = true;
+            observer.original_observe(observer.target,observer.config);
         }
-        // activate monitoring
-        callback();
-        self.observer.connect();
+
+        observer.stop = observer.disconnect; // create an alias
+        observer.connect = observer.observe; // create an alias
+        observer.start = observer.observe; // create an alias
+
+        return observer;
     };
 
-    self.monitorTribeChanges = function() {
+    self.setupObserver = (target,callback) => {
+        self.observer = self.createObserver(document.documentElement || document.body,self.applyChanges);
+        // run and start monitoring
+        self.applyChanges();
+        self.observer.start();
+    };
+
+    self.monitorTribeChanges = () => {
         self.setupBlur();
+        self.setupFocus();
+        self.setupClipboardAccess();
         self.setupObserver(document.documentElement || document.body,self.applyChanges);
     };
 
