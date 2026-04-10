@@ -23,5 +23,6 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
+16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
 
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
