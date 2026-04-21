@@ -3,12 +3,13 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.4.10.2
+// @version      2026.4.21.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
 // @match        https://auth.tribecrm.nl/login*
 // @match        https://gesp.zn-man.nl/tools/plugins
+// @run-at       document-end
 // @grant        none
 // ==/UserScript==
 
@@ -20,6 +21,14 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.4.21.1
+- nieuwe aanpassingen:
+17. Maak de breedte passend voor de weergave keuzelijst
+18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
+- header regel toegevoegd om te zorgen dat de clipboard check niet te vroeg wordt uitgevoerd: run-at document-end
+- meer snelle opties toegevoegd aan profiel menu
+- verbetering voor wijziging van lange teksten als titel weergeven
 
 versie 2026.4.10.2
 - nieuwe aanpassing:
@@ -177,7 +186,10 @@ versie 2025.7.9.1
         enablescrollcenter: true,
         enablelistblur: true,
         advancedswitchchecked: false,
-        enabletrimclipboard: false
+        enabletrimclipboard: false,
+        enablecombowidth: false,
+        enablescrollrestore: true,
+        scrollrestore: []
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -557,11 +569,11 @@ div.popupmessage.tribetoolsdisplay {
     // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
     self.applyOverflowtitles = () => {
         if (self.settings.enableoverflowtitles) {
-            let overflowtextelementswithouttitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && !el.title);
+            let overflowtextelementswithouttitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && el.title != el.innerText);
             if (overflowtextelementswithouttitle.length) {
                 self.observer.disconnect();
 
-                console.log(GM_info.script.name + " - Geef lang teksten een titel:",overflowtextelementswithouttitle.length);
+                console.log(GM_info.script.name + " - Geef lange teksten een titel:",overflowtextelementswithouttitle.length);
                 overflowtextelementswithouttitle.forEach(element => {
                     element.setAttribute('title',element.innerText);
                 });
@@ -1413,6 +1425,11 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
         addChekboxOption('enabletrimclipboard',`Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)`,self.setupClipboardAccess);
 
+        // 17. Maak de breedte passend voor de weergave keuzelijst
+        addChekboxOption('enablecombowidth',`Maak de breedte passend voor de weergave keuzelijst`,self.applyComboWidth);
+        // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
+        addChekboxOption('enablescrollrestore',`Herstel de scroll positie na terugkeer naar een eerder geopend scherm`);
+
         // restart monitoring
         self.observer.connect();
     };
@@ -1435,7 +1452,10 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             enablesearchtabselect: 'Favoriete zoek tab',
             enablelabeltextvertical: 'Labels en tekst onder elkaar',
             enablebuttonorder: 'Notitie knop als laatste',
-            enablemystyle: 'Aangepaste weergave'
+            enablemystyle: 'Aangepaste weergave',
+            enabletrimclipboard: 'Wis gekopieerde spaties',
+            enablecombowidth: 'Keuzelijst breedte',
+            enablescrollrestore: 'Herstel scroll positie'
         }).forEach(([setting,text]) => {
             let menuoption = menu.appendChild(document.createElement('span'));
             menuoption.appendChild(self.addCheckbox(setting,e =>{
@@ -1450,6 +1470,12 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                         break;
                     case 'enablemystyle':
                         self.applyMyStyle();
+                        break;
+                    case 'enabletrimclipboard':
+                        self.setupClipboardAccess();
+                        break;
+                    case 'enablecombowidth':
+                        self.applyComboWidth();
                         break;
                 }
             },idbase));
@@ -1503,7 +1529,8 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             self.observer.disconnect();
             stylesheet.remove();
         } else if (self.settings.enablemystyle && !stylesheet) {
-            stylesheet = document.createElement('style');
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
             stylesheet.className = 'tribetoolsmystyle';
             stylesheet.innerHTML = `
 .section-DUA6cC:last-child div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0.MuiCard-root {
@@ -1522,8 +1549,6 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     padding: 4px !important;
 }
 `;
-            self.observer.disconnect();
-            document.head.appendChild(stylesheet);
         }
         self.observer.connect();
     };
@@ -1554,6 +1579,70 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             self.settings.advancedswitchchecked = advancedswitch.checked;
             self.storeSettings();
         },false);
+        self.observer.connect();
+    };
+
+    // 17. Maak de breedte passend voor de weergave keuzelijst
+    self.applyComboWidth = () => {
+        let stylesheet = document.querySelector('style.tribetoolscombowidth');
+        if (stylesheet && !self.settings.enablecombowidth) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (!stylesheet && self.settings.enablecombowidth) {
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'tribetoolscombowidth';
+            // remove style display:flex from this element
+            stylesheet.innerHTML = `
+.MuiInputBase-root:has([role=combobox]) .MuiBox-root {
+    display: block !important;
+}
+`;
+        }
+        self.observer.connect();
+    };
+
+    // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
+    self.applyScrollRestore = () => {
+        // clean up old restore details (24 hours)
+        let keepactiverestores = self.settings.scrollrestore.filter(restore => restore.timestamp > new Date().getTime() - 1000 * 60 * 60 * 24);
+        if (keepactiverestores.length < self.settings.scrollrestore.length) {
+            self.settings.scrollrestore = keepactiverestores;
+            self.storeSettings();
+        }
+
+        if (!self.settings.enablescrollrestore) return;
+
+        let scrollarea = document.querySelector('.MuiBox-root.css-1jt5h62');
+        if (!scrollarea) return;
+
+        let restore = self.settings.scrollrestore.find(restore => restore.url == location.href);
+        if (!scrollarea.classList.contains('tribetoolsscrollrestored') && restore && scrollarea.scrollHeight >= restore.height) {
+            self.observer.disconnect();
+            console.log('Herstel de scroll positie voor deze pagina: ' + restore.title);
+            scrollarea.classList.add('tribetoolsscrollrestored');
+            scrollarea.scrollTop = restore.top;
+        }
+        if (!scrollarea.classList.contains('tribetoolsscrollrestore')) {
+            self.observer.disconnect();
+            scrollarea.classList.add('tribetoolsscrollrestore');
+            scrollarea.addEventListener('scroll', e => {
+                let restore = {
+                    url: location.href,
+                    title: document.title,
+                    top: scrollarea.scrollTop,
+                    height: scrollarea.scrollHeight,
+                    timestamp: new Date().getTime()
+                };
+                let restoreindex = self.settings.scrollrestore.findIndex(restore => restore.url == location.href);
+                if (restoreindex >= 0) {
+                    self.settings.scrollrestore[restoreindex] = restore;
+                } else {
+                    self.settings.scrollrestore.push(restore);
+                }
+                self.storeSettings();
+            },false);
+        }
         self.observer.connect();
     };
 
@@ -1592,6 +1681,11 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
         self.applyAdvancedFields();
 
+        // 17. Maak de breedte passend voor de weergave keuzelijst
+        self.applyComboWidth();
+        // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
+        self.applyScrollRestore();
+
         self.applySettings();
         self.applyPluginVersion();
     };
@@ -1610,24 +1704,31 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     self.setupClipboardAccess = () => {
         if (!self.settings.enabletrimclipboard) return;
+        let disableClipboardAccess = () => {
+            self.settings.enabletrimclipboard = false;
+            self.storeSettings();
+            self.updateCheckboxes();
+        };
         // trigger clipboard access
         navigator.clipboard.readText().then((text) => {
             console.log(`${GM_info.script.name} - Clipboard lees toegang is mogelijk`);
             setTimeout(() => {
                 navigator.clipboard.writeText(text).then(() => {
                     console.log(`${GM_info.script.name} - Clipboard schrijf toegang is mogelijk`);
-                }).catch(() => {
-                    alert("Test clipboard toegang\n\nSchrijf toegang tot het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
-                    self.settings.enabletrimclipboard = false;
-                    self.storeSettings();
-                    self.updateCheckboxes();
+                }).catch((e) => {
+                    if (!e.match(/Document is not focused/i)) {
+                        console.log(`${GM_info.script.name} - Clipboard writeText error`,e);
+                        alert("Test clipboard toegang\n\nSchrijf toegang tot het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
+                        disableClipboardAccess();
+                    }
                 });
             },1000);
-        }).catch(() => {
-            alert("Test clipboard toegang\n\nLees toegang van het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
-            self.settings.enabletrimclipboard = false;
-            self.storeSettings();
-            self.updateCheckboxes();
+        }).catch((e) => {
+            if (!e.match(/Document is not focused/i)) {
+                console.log(`${GM_info.script.name} - Clipboard readText error`,e);
+                alert("Test clipboard toegang\n\nLees toegang van het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
+                disableClipboardAccess();
+            }
         });
     };
 
@@ -1650,11 +1751,13 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                                 navigator.clipboard.writeText(text.trim()).then(() => {
                                     console.log(`${GM_info.script.name} - Spaties gewist voor en achter de gekopieerde platte tekst`);
                                 }).catch(() => {
+                                    console.log(`${GM_info.script.name} - Schrijf toegang tot het clipboard is mislukt - Deze optie wordt uitgeschakeld`);
                                     self.settings.enabletrimclipboard = false;
                                     self.storeSettings();
                                 });
                             };
                         }).catch(() => {
+                            console.log(`${GM_info.script.name} - Lees toegang van het clipboard is mislukt - Deze optie wordt uitgeschakeld`);
                             self.settings.enabletrimclipboard = false;
                             self.storeSettings();
                         });
