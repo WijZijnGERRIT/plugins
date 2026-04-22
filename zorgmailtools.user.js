@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.3.23.1
+// @version      2026.4.22.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,9 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+version 2026.4.22.1
+- probleem opgelost met opslaan en weergave van zorgmail password textarea in MCenter
+
 version 2026.3.23.1
 - zorgmail kopieer knoppen ook in details overzicht geplaatst
 - zorgmail kopieer knoppen de gerrit kleur gegeven zodat duidelijk is dat dit niet standaard bij het adresboek hoort
@@ -260,10 +263,13 @@ version 1.0.0.20230516.144500
             okbutton.classList.add('zorgmailtoolsclickadded');
             okbutton.addEventListener('click', e => {
                 // console.log("setupListeners newHMActivationCode ok clicked",username,password);
+                let selectedUser = document.getElementById('selectedUser')?.innerText.replace(' (' + username + '@lms.lifeline.nl)','').trim();
                 let username = document.getElementById('optionspasswords.newHMActivationCode.username')?.innerText;
                 let password = document.getElementById('optionspasswords.newHMActivationCode.password')?.innerText;
+                let email = document.getElementById('options.myAddress.viewMode.defaultAddressBookSecureEmail')?.innerText;
+                let textarea = selectedUser + "\n" + username + "\n" + password + "\n" + email;
                 if (username && password) {
-                    self.storePassword(username,password,document.getElementById('HWpassword').value);
+                    self.storePassword(username,password,textarea);
                 }
             },false);
         });
@@ -302,8 +308,7 @@ version 1.0.0.20230516.144500
             message.style.fontWeight = 'bold';
             message.textContent = 'Let op: De activatiecode wordt pas actief na een klik op OK';
 
-            let selectedUser = document.getElementById('selectedUser')?.innerText;
-            selectedUser = selectedUser.replace(' (' + username + '@lms.lifeline.nl)','').trim();
+            let selectedUser = document.getElementById('selectedUser')?.innerText.replace(' (' + username + '@lms.lifeline.nl)','').trim();
             let email = document.getElementById('options.myAddress.viewMode.defaultAddressBookSecureEmail')?.innerText;
 
             textarea.value = selectedUser + "\n" + username + "\n" + password.innerText + "\n" + email;
@@ -356,6 +361,17 @@ version 1.0.0.20230516.144500
                 let textarea = tdlist[1].appendChild(document.createElement('textarea'));
                 textarea.cols = "50";
                 textarea.rows = "5";
+
+                if (typeof storedpasswords[user].textarea != 'string' || !storedpasswords[user].textarea.match(new RegExp(user))) {
+                    // fix a bug with wrong formatted textarea data
+                    let selectedUser = document.getElementById('selectedUser')?.innerText.replace(' (' + user + '@lms.lifeline.nl)','').trim();
+                    let email = document.getElementById('options.myAddress.viewMode.defaultAddressBookSecureEmail')?.innerText;
+                    let password = storedpasswords[user].password;
+                    let textarea = selectedUser + "\n" + user + "\n" + password + "\n" + email;
+                    console.log('fix textarea',textarea);
+                    self.storePassword(user,password,textarea);
+                    storedpasswords = self.getPasswords();
+                }
 
                 textarea.value = storedpasswords[user].textarea;
 
