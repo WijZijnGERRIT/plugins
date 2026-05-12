@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.12.2
+// @version      2026.5.12.3
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.5.12.3
+- debug melding verwijderd
 
 versie 2026.5.12.2
 - fix voor zoek tab activatie bij geen resultaat (trim de spaties weg)
@@ -676,8 +679,6 @@ div.popupmessage.tribetoolsdisplay {
                         block: "nearest",
                         inline: "center"
                     });
-                } else {
-                    console.log(GM_info.script.name + " - Zoektab voorkeur NIET geselecteerd: " + self.settings.searchtab,searchtabbuttonselected,searchtabbuttontarget);
                 }
             }
         }
