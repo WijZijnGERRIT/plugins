@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.12.1
+// @version      2026.5.12.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.5.12.2
+- fix voor zoek tab activatie bij geen resultaat (trim de spaties weg)
 
 versie 2026.5.12.1
 - nieuwe aanpassing:
@@ -619,7 +622,7 @@ div.popupmessage.tribetoolsdisplay {
             let searchbuttonsvisible = searchtabbuttons.length > 2 && ([...searchtabbuttons].filter(el => el.innerText.match(/Relaties|Relations|Activiteiten|Activities/)).length == 2);
             let progressbar = document.querySelector('div[data-test-id="search-bar"] [role="progressbar"]');
             let searchresultsrelations = [...document.querySelectorAll('[class*=card] [class*=header]')].filter(header => header.innerText.match(/(Klanten|Prospects|Medewerkers|Contactpersonen)/)).length >= 1;
-            let searchresultsnothing = [...document.querySelectorAll('.MuiBox-root > div > strong')].find(strong => strong.innerText == searchinput.value);
+            let searchresultsnothing = [...document.querySelectorAll('.MuiBox-root > div > strong')].find(strong => strong.innerText.trim() == searchinput.value.trim());
             // er komen resultaten, eerst onder Relaties, dit kunnen zijn: Klanten, Prospects, Medewerkers, Contactpersonen
             // of:
             // Géén zoekresultaten gevonden voor zoekopdracht: <strong>zoektekst</strong>
@@ -673,6 +676,8 @@ div.popupmessage.tribetoolsdisplay {
                         block: "nearest",
                         inline: "center"
                     });
+                } else {
+                    console.log(GM_info.script.name + " - Zoektab voorkeur NIET geselecteerd: " + self.settings.searchtab,searchtabbuttonselected,searchtabbuttontarget);
                 }
             }
         }
