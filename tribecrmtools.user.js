@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.12.3
+// @version      2026.5.20.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,14 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.5.20.1
+- nieuwe aanpassing:
+21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
+- fix voor titel weergave voor bovenliggende overflow elementen
+
+versie 2026.5.15.1
+- fix voor maximale breedte bij voorkomen popup sluiten
 
 versie 2026.5.12.3
 - debug melding verwijderd
@@ -209,7 +217,8 @@ versie 2025.7.9.1
         enablescrollrestore: true,
         enablenoclickarea: true,
         scrollrestore: [],
-        enablehidenotitie: false
+        enablehidenotitie: false,
+        enableconfigurationstyle: true
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -591,23 +600,26 @@ div.popupmessage.tribetoolsdisplay {
     // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
     self.applyOverflowtitles = () => {
         if (self.settings.enableoverflowtitles) {
-            let overflowtextelementswithouttitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && el.title != el.innerText);
+            let textelements = [...document.body.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText);
+            let overflowtextelementswithouttitle = textelements.filter(el => (el.offsetWidth < el.scrollWidth || el.parentElement?.offsetWidth < el.parentElement?.scrollWidth) && el.title != el.innerText);
             if (overflowtextelementswithouttitle.length) {
                 self.observer.disconnect();
 
                 console.log(GM_info.script.name + " - Geef lange teksten een titel:",overflowtextelementswithouttitle.length);
                 overflowtextelementswithouttitle.forEach(element => {
                     element.setAttribute('title',element.innerText);
+                    element.classList.add('tribetoolstitle');
                 });
             }
         } else {
-            let overflowtextelementswithtitle = [...document.querySelectorAll('*')].filter(el => el.childElementCount === 0 && el.innerText && el.offsetWidth < el.scrollWidth && el.title);
-            if (overflowtextelementswithtitle.length) {
+            let titleelements = document.body.querySelectorAll('.tribetoolstitle');
+            if (titleelements.length) {
                 self.observer.disconnect();
 
-                console.log(GM_info.script.name + " - Herstel lange teksten, verwijder de titel:",overflowtextelementswithtitle.length);
-                overflowtextelementswithtitle.forEach(element => {
-                    element.removeAttribute('title',element.innerText);
+                console.log(GM_info.script.name + " - Herstel lange teksten, verwijder de titel:",titleelements.length);
+                titleelements.forEach(element => {
+                    element.removeAttribute('title');
+                    element.classList.remove('tribetoolstitle');
                 });
             }
         }
@@ -1453,6 +1465,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             self.applyButtonOrder();
         });
 
+        // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
+        addChekboxOption('enableconfigurationstyle',`Aangepaste (opvallende) weergave voor beheerders configuratie menu`);
+
         // restart monitoring
         self.observer.connect();
     };
@@ -1728,10 +1743,12 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     align-items: center;
     background-color: #eef5f35c;
     height: 100vh;
+    width: 100vw;
     cursor: not-allowed;
 }
 .tribetoolsnoclickareadiv > div[role=dialog].tribetoolsnoclickarea {
     max-height: 100vh;
+    max-width: 100vh;
 }
 `;
         }
@@ -1812,6 +1829,43 @@ button.tribetoolshidenotitie {
         self.observer.connect();
     };
 
+    // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
+    self.applyConfigurationStyle = () => {
+        let stylesheet = document.querySelector('style.tribetoolsconfiguration');
+        if (stylesheet && !self.settings.enableconfigurationstyle) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (!stylesheet && self.settings.enableconfigurationstyle) {
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.type = "text/css";
+            stylesheet.className = 'tribetoolsconfiguration';
+            stylesheet.innerHTML = `
+div.tribetoolsconfiguration {
+    background-color: #faa;
+    padding-right: 12px;
+}
+div.tribetoolsconfiguration > div:has(div > button) {
+    padding-bottom: 35px;
+}
+`;
+        }
+
+        let configelement = document.querySelector('.MuiBox-root.tribetoolsconfiguration');
+        if (configelement && !self.settings.enableconfigurationstyle) {
+            self.observer.disconnect();
+            configelement.classList.remove('tribetoolsconfiguration');
+        } else if (!configelement && self.settings.enableconfigurationstyle) {
+            configelement = document.querySelector('[data-test-label="Generic.Configuration"]');
+            while (configelement && configelement.parentElement.classList.contains('MuiBox-root')) configelement = configelement.parentElement;
+            if (configelement && configelement.classList.contains('MuiBox-root')) {
+                self.observer.disconnect();
+                configelement.classList.add('tribetoolsconfiguration');
+            }
+        }
+        self.observer.connect();
+    };
+
     self.applyChanges = () => {
         self.restoreSettings(); // update de settings
 
@@ -1856,6 +1910,8 @@ button.tribetoolshidenotitie {
         self.applyNoClickArea();
         // 20. Verberg knop Notitie toevoegen bij een Organisatie
         self.applyHideNotitie();
+
+        self.applyConfigurationStyle();
 
         self.applySettings();
         self.applyPluginVersion();
