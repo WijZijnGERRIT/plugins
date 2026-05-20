@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.20.1
+// @version      2026.5.20.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,10 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.5.20.2
+- nieuwe aanpassing:
+22. Verberg de AI button
 
 versie 2026.5.20.1
 - nieuwe aanpassing:
@@ -218,7 +222,8 @@ versie 2025.7.9.1
         enablenoclickarea: true,
         scrollrestore: [],
         enablehidenotitie: false,
-        enableconfigurationstyle: true
+        enableconfigurationstyle: true,
+        enablehideai: false
     };
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -1467,6 +1472,8 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
         // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
         addChekboxOption('enableconfigurationstyle',`Aangepaste (opvallende) weergave voor beheerders configuratie menu`);
+        // 22. Verberg de AI button
+        addChekboxOption('enablehideai',`Verberg de AI button`,self.applyHideAI);
 
         // restart monitoring
         self.observer.connect();
@@ -1866,6 +1873,38 @@ div.tribetoolsconfiguration > div:has(div > button) {
         self.observer.connect();
     };
 
+    // 22. Verberg de AI button
+    self.applyHideAI = () => {
+        let aibutton = document.body.querySelector('button.tribe-ai-button');
+        if (!aibutton) return;
+
+        let stylesheet = document.querySelector('style.tribetoolshideai');
+        if (stylesheet && !self.settings.enablehideai) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (!stylesheet && self.settings.enablehideai) {
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.type = "text/css";
+            stylesheet.className = 'tribetoolshideai';
+            stylesheet.innerHTML = `
+button.tribetoolshideai {
+    display: none;
+}
+`;
+        }
+
+        if (aibutton.classList.contains('tribetoolshideai') && !self.settings.enablehideai) {
+            self.observer.disconnect();
+            aibutton.classList.remove('tribetoolshideai');
+        } else if (!aibutton.classList.contains('tribetoolshideai') && self.settings.enablehideai) {
+            self.observer.disconnect();
+            aibutton.classList.add('tribetoolshideai');
+        }
+
+        self.observer.connect();
+    };
+
     self.applyChanges = () => {
         self.restoreSettings(); // update de settings
 
@@ -1910,8 +1949,10 @@ div.tribetoolsconfiguration > div:has(div > button) {
         self.applyNoClickArea();
         // 20. Verberg knop Notitie toevoegen bij een Organisatie
         self.applyHideNotitie();
-
+        // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
         self.applyConfigurationStyle();
+        // 22. Verberg de AI button
+        self.applyHideAI();
 
         self.applySettings();
         self.applyPluginVersion();
@@ -2041,7 +2082,7 @@ div.tribetoolsconfiguration > div:has(div > button) {
     };
 
     self.setupObserver = (target,callback) => {
-        self.observer = self.createObserver(document.documentElement || document.body,self.applyChanges);
+        self.observer = self.createObserver(target,self.applyChanges);
         // run and start monitoring
         self.applyChanges();
         self.observer.start();
