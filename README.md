@@ -28,5 +28,6 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
 19. Voorkom het sluiten van een popup door naast de popup te klikken
 20. Verberg knop Notitie toevoegen bij een Organisatie
+21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
 
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
