@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.20.2
+// @version      2026.5.21.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,13 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.5.21.1
+- achtergrondkleur ingesteld voor de Tribe CRM tools instellingen
+- extra menu knop toegevoegd om de Tribe CRM tools instellingen te vinden
+
+versie 2026.5.21.1
+- fix voor detectie beheerders configuratie menu
 
 versie 2026.5.20.2
 - nieuwe aanpassing:
@@ -1032,6 +1039,9 @@ div.popupmessage.tribetoolsdisplay {
         stylesheet.type = "text/css";
         stylesheet.className = 'tribetoolsmysettings';
         stylesheet.innerHTML = `
+.tribetoolsoptions > div.MuiPaper-root {
+    background-color: #f3faf8;
+}
 .tribetoolsoptions label, .tribepointer {
     cursor: pointer;
 }
@@ -1143,11 +1153,16 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 .tribetoolsversion {
     color: rgb(21, 94, 239);
 }
-.tribetoolsversion a {
-    color: inherit;
+.tribetoolsoptions a {
+    color: #630000;
 }
-.tribetoolsversion a:hover {
+.tribetoolsoptions a:hover {
     text-decoration: underline;
+}
+.tribetoolsmenu {
+    display: grid;
+    background-color: #f3faf8;
+    border-radius: 15px;
 }
 `;
         self.observer.disconnect();
@@ -1198,7 +1213,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             info.style.paddingLeft = '16px';
             info.style.paddingRight = '16px';
             info.innerHTML = GM_info.script.description.replace(/([^0-9])\./g,"$1.<br>\n");
-            info.innerHTML += `<p class="tribetoolsversion"><a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name}</a> versie ${GM_info.script.version}</p>`;
+            info.innerHTML += `<p><a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">Controleer zelf op updates</a>: <span class="tribetoolsversion">${GM_info.script.name} versie ${GM_info.script.version}</span></p>`;
 
             lastrow.before(info);
 
@@ -1487,10 +1502,22 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         let pluginversion = menu.querySelector('.tribetoolsversion');
         if (pluginversion) return;
         self.observer.disconnect();
-        pluginversion = menu.appendChild(document.createElement('span'));
-        pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
-        pluginversion.classList.add('tribetoolsversion');
-        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name} versie ${GM_info.script.version}</a>`;
+
+        let tribetoolsarea = menu.appendChild(document.createElement('div'));
+        tribetoolsarea.className = 'tribetoolsmenu';
+
+        let accountbutton = [...menu.querySelectorAll('span')].find(span => span.innerText == 'person')?.closest('li');
+        if (accountbutton) {
+            let settingsbutton = tribetoolsarea.appendChild(document.createElement('li'));
+            settingsbutton.className = accountbutton.className;
+            settingsbutton.innerHTML = accountbutton.innerHTML;
+            settingsbutton.querySelector('span').innerText = 'settings';
+            settingsbutton.querySelector('p').innerText = 'Bekijk alle Tribe CRM Tools instellingen';
+            settingsbutton.addEventListener('click',e => {
+                e.stopPropagation();
+                accountbutton.click();
+            });
+        }
 
         let idbase = 'idmenu_';
         Object.entries({
@@ -1504,7 +1531,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             enablenoclickarea: 'Voorkom popup sluiten',
             enablehidenotitie: 'Verberg +notitie bij organisaties'
         }).forEach(([setting,text]) => {
-            let menuoption = menu.appendChild(document.createElement('span'));
+            let menuoption = tribetoolsarea.appendChild(document.createElement('span'));
             menuoption.appendChild(self.addCheckbox(setting,e =>{
                 switch(setting) {
                     case 'enablesearchtabselect':
@@ -1537,6 +1564,11 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             label.setAttribute('for',`${idbase}${setting}`);
             label.innerHTML = text;
         });
+
+        pluginversion = tribetoolsarea.appendChild(document.createElement('span'));
+        pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
+        pluginversion.classList.add('tribetoolsversion');
+        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name} versie ${GM_info.script.version}</a>`;
 
         self.observer.connect();
     };
@@ -1865,7 +1897,7 @@ div.tribetoolsconfiguration > div:has(div > button) {
         } else if (!configelement && self.settings.enableconfigurationstyle) {
             configelement = document.querySelector('[data-test-label="Generic.Configuration"]');
             while (configelement && configelement.parentElement.classList.contains('MuiBox-root')) configelement = configelement.parentElement;
-            if (configelement && configelement.classList.contains('MuiBox-root')) {
+            if (configelement && !configelement.querySelector('header') && configelement.classList.contains('MuiBox-root')) {
                 self.observer.disconnect();
                 configelement.classList.add('tribetoolsconfiguration');
             }
