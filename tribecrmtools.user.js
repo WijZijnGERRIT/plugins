@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.21.1
+// @version      2026.5.26.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,11 +22,12 @@
     self.changelog = `
 Changelog:
 
+versie 2026.5.26.1
+- fix voor detectie beheerders configuratie menu
+
 versie 2026.5.21.1
 - achtergrondkleur ingesteld voor de Tribe CRM tools instellingen
 - extra menu knop toegevoegd om de Tribe CRM tools instellingen te vinden
-
-versie 2026.5.21.1
 - fix voor detectie beheerders configuratie menu
 
 versie 2026.5.20.2
@@ -1895,8 +1896,7 @@ div.tribetoolsconfiguration > div:has(div > button) {
             self.observer.disconnect();
             configelement.classList.remove('tribetoolsconfiguration');
         } else if (!configelement && self.settings.enableconfigurationstyle) {
-            configelement = document.querySelector('[data-test-label="Generic.Configuration"]');
-            while (configelement && configelement.parentElement.classList.contains('MuiBox-root')) configelement = configelement.parentElement;
+            configelement = document.querySelector('[data-test-label="Generic.Configuration"]')?.parentElement?.parentElement?.parentElement?.parentElement;
             if (configelement && !configelement.querySelector('header') && configelement.classList.contains('MuiBox-root')) {
                 self.observer.disconnect();
                 configelement.classList.add('tribetoolsconfiguration');
