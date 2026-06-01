@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.1.1
+// @version      2026.6.1.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.1.2
+- toevoeging aan admin config om automations lijst te kopieren
 
 versie 2026.6.1.1
 - aanpassing voor 16. wis gekopieerde spaties alleen bij focus op het zoek vak
@@ -1957,6 +1960,70 @@ div.tribetoolsconfiguration > div:has(div > button) {
                 configelement.classList.add('tribetoolsconfiguration');
             }
         }
+
+        let getautomationsbutton = document.querySelector('.tribetoolsgetautomations');
+        if (getautomationsbutton && !self.settings.enableconfigurationstyle) {
+            self.observer.disconnect();
+            getautomationsbutton.remove();
+        } else if (!getautomationsbutton && self.settings.enableconfigurationstyle) {
+            let automationbutton = [...document.body.querySelectorAll('button:has(span.MuiBox-root)')].find(button => button.querySelector('span.MuiBox-root').innerText == 'Automation');
+            let addbutton = [...document.body.querySelectorAll('button:has(span[data-test-label])')].find(button => button.querySelector('span[data-test-label]').innerText == 'Toevoegen');
+            let entity = document.body.querySelector('h4 span')?.innerText;
+            if (automationbutton || entity == 'Automations') {
+                self.observer.disconnect();
+                getautomationsbutton = document.createElement('button');
+                getautomationsbutton.className = automationbutton?.className || addbutton.className;
+                getautomationsbutton.classList.add('tribetoolsgetautomations');
+                getautomationsbutton.innerHTML = automationbutton?.innerHTML || addbutton.innerHTML;
+                getautomationsbutton.querySelector('span.material-icons-outlined,i.material-icons').innerText = 'content_copy';
+                getautomationsbutton.querySelector('span.MuiBox-root,span[data-test-label]').innerText = 'Kopieer lijst';
+
+                if (automationbutton) {
+                    automationbutton.after(getautomationsbutton);
+                } else {
+                    document.body.querySelector('h4').appendChild(getautomationsbutton);
+                }
+                getautomationsbutton.addEventListener('click',e => {
+                    let loadmore = document.body.querySelector('[data-test-label="LoadMore"]');
+                    if (loadmore) {
+                        getautomationsbutton.loadmore = true;
+                        alert('Er wordt eerst meer data ingelezen');
+                        loadmore.click();
+                        return;
+                    }
+                    let text = ['entiteit','type','actief','naam','beschrijving','trigger'].join("\t") + "\n";
+                    let entity = document.body.querySelector('h4 span').innerText;
+                    text += [...document.body.querySelectorAll('input[type=checkbox]')].map(checkbox => {
+                        let tr = checkbox.closest('tr');
+                        if (entity == 'Automations' && tr.querySelectorAll('td').length == 5) {
+                            let icon = tr.querySelectorAll('td')[0].querySelector('span.material-icons').innerText;
+                            let entity = tr.querySelectorAll('td')[1].innerText;
+                            let title = tr.querySelectorAll('td')[2].querySelectorAll('.item-VhOseW')[0].innerText;
+                            let trigger = tr.querySelectorAll('td')[2].querySelectorAll('.item-VhOseW')[1].innerText;
+                            let description = tr.querySelectorAll('td')[2].querySelectorAll('.item-VhOseW')[2].innerText;
+                            let failicon = tr.querySelectorAll('td')[3].querySelector('span.material-icons')?.innerText || '';
+                            return [entity,icon,failicon,checkbox.checked,title,description,trigger].join("\t");
+                        } else if (tr.querySelectorAll('td').length == 4) {
+                            let icon = tr.querySelector('td span.material-icons').innerText;
+                            let entity = document.body.querySelector('h4').innerText;
+                            let title = tr.querySelectorAll('td')[1].querySelectorAll('.item-VhOseW')[0].innerText;
+                            let trigger = tr.querySelectorAll('td')[1].querySelectorAll('.item-VhOseW')[1].innerText;
+                            let description = tr.querySelectorAll('td')[1].querySelectorAll('.item-VhOseW')[2].innerText;
+                            let failicon = tr.querySelectorAll('td')[2].querySelector('span.material-icons').innerText || '';
+                            return [entity,icon,failicon,checkbox.checked,title,description,trigger].join("\t");
+                        } else {
+                            console.log(entity,tr.querySelectorAll('td').length,tr);
+                        }
+                    }).join("\n");
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('Lijst is gekopieerd naar het clipboard');
+                    }).catch(e => {
+                        alert('Kopieren van de lijst is mislukt');
+                    });
+                },false);
+            }
+        }
+
         self.observer.connect();
     };
 
