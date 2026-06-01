@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PRTG tools
-// @version      2026.2.11.2
-// @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.meta.js
+// @version      2026.6.1.1
+// @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.user.js
 // @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR), and proxy status
 // @author       Daniel
@@ -11,25 +11,25 @@
 // @run-at       document-end
 // ==/UserScript==
 
-function wrapper(GM_info) {
-	'use strict';
+(() => {
+    'use strict';
 
-	if(typeof window.plugin !== 'function') window.plugin = function(){};
+    if (typeof window.plugin !== 'function') window.plugin = () => {};
+    let self = window.plugin.prtgtools = () => {};
 
-	window.plugin.prtgcountdowntimer = function(){};
-	var self = window.plugin.prtgcountdowntimer;
-	self.id = 'prtgcountdowntimer';
-	self.namespace = 'window.plugin.' + self.id + '.';
+	self.namespace = 'window.plugin.prtgtools.';
 
-	var debug = false;
-	var intervaltimerid = 0;
-	var clocktimerid = 0;
-	var interval = 0;
+    self.settings = {
+        debug: false,
+        intervaltimerid: 0,
+        clocktimerid: 0,
+        interval: 0
+    };
 
 	// example top URL: https://prtg.ddfr.nl/public/mapshow.htm?ids=9239:A99876C9-6175-4E7F-B569-17AD721E3C0B,9367:5ABE2F74-6B1C-4267-AF76-5C5CA09120B8,9337:0620931F-2F5C-403D-93A4-07641E352D60,9342:A02520F3-F5ED-4D85-92E2-1D527115B7CC&interval=30
 	// example inner URL: https://prtg.ddfr.nl/public/mapshow_simple.htm?id=9337&mapid=0620931F-2F5C-403D-93A4-07641E352D60
 
-	function getTopURLinterval() {
+	self.getTopURLinterval = () => {
 		try {
 			if (!window || !window.top || !window.top.document || !window.top.document.location) return false;
 		} catch(e) {
@@ -38,16 +38,16 @@ function wrapper(GM_info) {
 		let topurl = window.top.document.location.href;
 		let urlmatches = topurl.match(/interval=(\d+)/i);
 		if (!urlmatches || urlmatches.length < 1) {
-			if (debug) console.log('NO TOP URL INTERVAL found',topurl);
+			if (self.settings.debug) console.log('NO TOP URL INTERVAL found',topurl);
 			return false;
 		}
 		let interval = urlmatches[1];
-		if (debug) console.log('TOP URL INTERVAL found:',interval);
+		if (self.settings.debug) console.log('TOP URL INTERVAL found:',interval);
 
 		return interval;
-	}
+	};
 
-	function getTopURLidPages() {
+	self.getTopURLidPages = () => {
 		try {
 			if (!window || !window.top || !window.top.document || !window.top.document.location) return false;
 		} catch(e) {
@@ -57,44 +57,44 @@ function wrapper(GM_info) {
 
 		let urlmatches = topurl.match(/ids=([^&]+)/);
 		if (!urlmatches || urlmatches.length < 1) {
-			if (debug) console.log('NO TOP URL IDS found',topurl);
+			if (self.settings.debug) console.log('NO TOP URL IDS found',topurl);
 			return false;
 		}
 		let ids = urlmatches[1].split(',');
-		if (debug) console.log('TOP URL IDS found:',ids);
+		if (self.settings.debug) console.log('TOP URL IDS found:',ids);
 
 		return ids;
-	}
+	};
 
-	function getCurrentURLidPageNumber() {
-		let ids = getTopURLidPages();
+	self.getCurrentURLidPageNumber = () => {
+		let ids = self.getTopURLidPages();
 		if (!ids) return false;
-		if (debug) console.log('IDs count:',ids.length);
+		if (self.settings.debug) console.log('IDs count:',ids.length);
 
 		let url = window.document.location.href;
 		let urlmatches = url.match(/id=([0-9]+)&mapid=([^&]+)/);
 		if (!urlmatches || urlmatches.length < 1) {
-			if (debug) console.log('NO URL ID found',url);
+			if (self.settings.debug) console.log('NO URL ID found',url);
 			return false;
 		}
 		let id = urlmatches[1] + ':' + urlmatches[2];
 		let currentPageNumber = (ids.indexOf(id) + 1);
-		if (debug) console.log('Current ID and PageNumber:',id,currentPageNumber);
+		if (self.settings.debug) console.log('Current ID and PageNumber:',id,currentPageNumber);
 
 		return currentPageNumber;
-	}
+	};
 
-	function updateIntervalCountdown() {
-		if (interval <= 0) {
-			clearInterval(intervaltimerid);
+	self.updateIntervalCountdown = () => {
+		if (self.settings.interval <= 0) {
+			clearInterval(self.settings.intervaltimerid);
 			return;
 		}
-		interval--;
-		document.getElementById('interval').innerText = interval;
-	}
+		self.settings.interval--;
+		document.getElementById('interval').innerText = self.settings.interval;
+	};
 
-	self.loadpage = function(pagenumber) {
-		let ids = getTopURLidPages();
+	self.loadpage = (pagenumber) => {
+		let ids = self.getTopURLidPages();
 		if (!ids) return false;
 
 		// wrap around
@@ -108,12 +108,12 @@ function wrapper(GM_info) {
 		let idmapid = ids[pagenumber-1];
 		let id = idmapid.split(':')[0]
 		let mapid = idmapid.split(':')[1];
-		if (debug) console.log('load page number ' + pagenumber + ': ','mapshow_simple.htm?id=' + id + '&mapid=' + mapid);
+		if (self.settings.debug) console.log('load page number ' + pagenumber + ': ','mapshow_simple.htm?id=' + id + '&mapid=' + mapid);
 		//$('.mapshowiframe').attr("src", 'mapshow_simple.htm' + '?id=' + id + '&mapid=' + mapid);
 		document.location.href = 'mapshow_simple.htm?id=' + id + '&mapid=' + mapid;
 	};
 
-	function clock() {
+	self.clock = () => {
 		var date = new Date();
 		var h = date.getHours(); // 0 - 23
 		var m = date.getMinutes(); // 0 - 59
@@ -124,14 +124,14 @@ function wrapper(GM_info) {
 		s = (s < 10) ? "0" + s : s;
 
 		return h + ":" + m; // + ":" + s;
-	}
+	};
 
-	function updateClock() {
+	self.updateClock = () => {
 		if (!document.getElementById('clock')) return;
-		document.getElementById('clock').innerText = clock();
-	}
+		document.getElementById('clock').innerText = self.clock();
+	};
 
-	function updateProxyStatus() {
+	self.updateProxyStatus = () => {
         let proxystatus = document.querySelector('#proxystatus');
 		if (!proxystatus) return;
 
@@ -156,7 +156,7 @@ function wrapper(GM_info) {
         proxystatus.innerHTML = 'Proxy status ophalen...';
 
 		let xmlhttp = new XMLHttpRequest();
-		xmlhttp.onreadystatechange=function() {
+		xmlhttp.onreadystatechange = () => {
 			if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
                 let response = JSON.parse(xmlhttp.responseText);
                 proxystatus.innerHTML = `Proxy status: ${response.statustext}`;
@@ -174,9 +174,9 @@ function wrapper(GM_info) {
         };
 		xmlhttp.open("GET","https://gesp.zn-man.nl/proxy/?json=1",true);
 		xmlhttp.send();
-    }
+    };
 
-	function updateEnovationStatus() {
+	self.updateEnovationStatus = () => {
 		if (!document.getElementById('enovationstatus')) return;
 
 		document.getElementById('enovationstatus').style.fontSize = '20px';
@@ -188,9 +188,9 @@ function wrapper(GM_info) {
 		document.getElementById('enovationstatus').innerHTML = 'Enovation status ophalen...';
 
 		let xmlhttp = new XMLHttpRequest();
-		xmlhttp.onreadystatechange=function() {
+		xmlhttp.onreadystatechange = () => {
 			if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-				if (debug) console.log(xmlhttp.responseText);
+				if (self.settings.debug) console.log(xmlhttp.responseText);
 				let page = document.createElement('html');
 				page.innerHTML = xmlhttp.responseText;
 				let statustext = page.querySelector('h1')?.innerText; // page.getElementsByClassName('timeline timeline-header')[0].innerText;
@@ -198,7 +198,7 @@ function wrapper(GM_info) {
                 if (!statustext) statustext = page.querySelector('.border-state-investigating')?.innerText;
                 if (!statustext) statustext = page.querySelector('.border-state-underway')?.innerText;
                 if (!statustext) statustext = page.querySelector('.text-lg')?.innerText;
-				if (debug) console.log(statustext);
+				if (self.settings.debug) console.log(statustext);
 
 				if (!statustext) {
 					document.getElementById('enovationstatus').style.backgroundColor = '#93224c'; // paars-rood
@@ -206,17 +206,20 @@ function wrapper(GM_info) {
 					console.log("Enovation status leeg (geen h1)",page);
                 } else if (statustext.match(/everything under control|alles onder controle/s)) {
 					document.getElementById('enovationstatus').style.backgroundColor = '#2fac66'; // groen
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status OK';
+					document.getElementById('enovationstatus').innerHTML = 'Enovation status: OK';
 				} else if (statustext.match(/we are having issues/s)) {
 					document.getElementById('enovationstatus').style.backgroundColor = '#e6332a'; // rood
 					document.getElementById('enovationstatus').innerHTML = 'Enovation having ISSUES';
 				} else if (statustext.match(/Ongoing/s)) {
                     let notice = page.querySelector('h3.notice-subject')?.innerText || "Ongoing";
                     document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status ' + notice;
+					document.getElementById('enovationstatus').innerHTML = 'Enovation status: ' + notice;
+				} else if (statustext.match(/In onderzoek/s)) {
+                    document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
+					document.getElementById('enovationstatus').innerHTML = 'Enovation status: In onderzoek';
 				} else if (statustext.match(/Underway/s)) {
                     document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status Underway';
+					document.getElementById('enovationstatus').innerHTML = 'Enovation status: Underway';
 				} else if (statustext.match(/(Scheduled maintenance|We have planned maintenance)/s)) {
 					document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
 					document.getElementById('enovationstatus').innerHTML = 'Enovation onderhoud';
@@ -235,9 +238,9 @@ function wrapper(GM_info) {
 		}
 		xmlhttp.open("GET","https://status.enovationgroup.com/",true);
 		xmlhttp.send();
-	}
+	};
 
-	function setup() {
+	self.setup = () => {
 		if (typeof window.showpluginstatus == 'function') {
 			window.showpluginstatus(GM_info.script.name,GM_info.script.version);
 			return;
@@ -270,14 +273,14 @@ function wrapper(GM_info) {
     color: white;
 }
 `;
-		interval = getTopURLinterval();
-		if (interval === false) {
-			interval = 60;
-			if (debug) console.log('DEFAULT interval:',interval);
+		self.settings.interval = self.getTopURLinterval();
+		if (self.settings.interval === false) {
+			self.settings.interval = 60;
+			if (self.settings.debug) console.log('DEFAULT interval:',self.settings.interval);
 		}
-		let currentidpagenumber = getCurrentURLidPageNumber();
+		let currentidpagenumber = self.getCurrentURLidPageNumber();
 		if (currentidpagenumber === false) {
-			if (debug) console.log('NO currentidpagenumber FOUND');
+			if (self.settings.debug) console.log('NO currentidpagenumber FOUND');
 		}
 
 		let pagenumberstarget = document.getElementById('pagenumbers');
@@ -286,14 +289,14 @@ function wrapper(GM_info) {
 			intervalspan = pagenumberstarget.appendChild(document.createElement('span'));
 		}
 		if (intervalspan) {
-			if (debug) console.log("DEBUG PRTG intervalspan setup");
+			if (self.settings.debug) console.log("DEBUG PRTG intervalspan setup");
 			intervalspan.id = 'interval';
-			intervalspan.innerText = interval;
+			intervalspan.innerText = self.settings.interval;
 		} else {
-			if (debug) console.log('NO interval id FOUND');
+			if (self.settings.debug) console.log('NO interval id FOUND');
 		}
 		if (pagenumberstarget) {
-			let ids = getTopURLidPages();
+			let ids = self.getTopURLidPages();
 			if (currentidpagenumber) {
 				pagenumberstarget.appendChild(document.createTextNode(' [' + currentidpagenumber + '/' + ids.length + ']'));
 				pagenumberstarget.innerHTML += '<br /><a href="#" onclick="' + self.namespace + 'loadpage(' + (currentidpagenumber - 1) + '); return false;">&lt;&lt;</a>';
@@ -306,31 +309,26 @@ function wrapper(GM_info) {
 				pagenumberstarget.innerHTML += '<br /><span class="smallclock" id="clock"></span>';
 			}
 		} else {
-			if (debug) console.log('NO pagenumbers object id FOUND');
+			if (self.settings.debug) console.log('NO pagenumbers object id FOUND');
 		}
 		if (intervalspan) {
-			intervaltimerid = setInterval(updateIntervalCountdown, 1000);
+			self.settings.intervaltimerid = setInterval(self.updateIntervalCountdown, 1000);
 		}
 
 		let clocktarget = document.getElementById('clock');
 		if (clocktarget) {
-			clocktarget.append(clock());
+			clocktarget.append(self.clock());
             if (!document.querySelector('.smallclock')) {
                 clocktarget.classList.add('bigclock');
             }
-			clocktimerid = setInterval(updateClock, 1000);
+			self.settings.clocktimerid = setInterval(self.updateClock, 1000);
 		} else {
-			if (debug) console.log('NO clock object id FOUND');
+			if (self.settings.debug) console.log('NO clock object id FOUND');
 		}
 
-		updateEnovationStatus();
-        updateProxyStatus();
+		self.updateEnovationStatus();
+        self.updateProxyStatus();
 	}
 
-	setup();
-} // wrapper end
-
-// inject code into site context
-var script = document.createElement('script');
-script.appendChild(document.createTextNode('('+ wrapper +')(' + JSON.stringify(GM_info) + ');'));
-(document.body || document.head || document.documentElement).appendChild(script);
+	self.setup();
+})();
