@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PRTG tools
-// @version      2026.6.1.1
-// @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.user.js
+// @version      2026.6.1.2
+// @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.meta.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.user.js
 // @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR), and proxy status
 // @author       Daniel
@@ -177,15 +177,16 @@
     };
 
 	self.updateEnovationStatus = () => {
-		if (!document.getElementById('enovationstatus')) return;
+        let enovationstatus = document.getElementById('enovationstatus');
+		if (!enovationstatus) return;
 
-		document.getElementById('enovationstatus').style.fontSize = '20px';
-		document.getElementById('enovationstatus').style.color = '#FFF';
-		document.getElementById('enovationstatus').style.borderRadius = '6px';
-		document.getElementById('enovationstatus').style.padding = '10px 12px';
+		enovationstatus.style.fontSize = '20px';
+		enovationstatus.style.color = '#FFF';
+		enovationstatus.style.borderRadius = '6px';
+		enovationstatus.style.padding = '10px 12px';
 
-		document.getElementById('enovationstatus').style.backgroundColor = '#c1a418'; // bruin-oranje
-		document.getElementById('enovationstatus').innerHTML = 'Enovation status ophalen...';
+		enovationstatus.style.backgroundColor = '#c1a418'; // bruin-oranje
+		enovationstatus.innerHTML = 'Enovation status ophalen...';
 
 		let xmlhttp = new XMLHttpRequest();
 		xmlhttp.onreadystatechange = () => {
@@ -193,49 +194,46 @@
 				if (self.settings.debug) console.log(xmlhttp.responseText);
 				let page = document.createElement('html');
 				page.innerHTML = xmlhttp.responseText;
-				let statustext = page.querySelector('h1')?.innerText; // page.getElementsByClassName('timeline timeline-header')[0].innerText;
-                if (!statustext) statustext = page.querySelector('p.text-brand-header-contrast\\/60')?.innerText;
-                if (!statustext) statustext = page.querySelector('.border-state-investigating')?.innerText;
-                if (!statustext) statustext = page.querySelector('.border-state-underway')?.innerText;
-                if (!statustext) statustext = page.querySelector('.text-lg')?.innerText;
-				if (self.settings.debug) console.log(statustext);
+                let statustext = page.querySelector('h1,p.text-brand-header-contrast\\/60,.border-state-investigating,.border-state-underway,.text-lg')?.innerText.trim();
+                if (self.settings.debug) console.log(statustext);
 
 				if (!statustext) {
-					document.getElementById('enovationstatus').style.backgroundColor = '#93224c'; // paars-rood
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status niet gevonden';
+					enovationstatus.style.backgroundColor = '#93224c'; // paars-rood
+					enovationstatus.innerHTML = 'Enovation status niet gevonden';
 					console.log("Enovation status leeg (geen h1)",page);
                 } else if (statustext.match(/everything under control|alles onder controle/s)) {
-					document.getElementById('enovationstatus').style.backgroundColor = '#2fac66'; // groen
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status: OK';
+					enovationstatus.style.backgroundColor = '#2fac66'; // groen
+					enovationstatus.innerHTML = 'Enovation status: OK';
 				} else if (statustext.match(/we are having issues/s)) {
-					document.getElementById('enovationstatus').style.backgroundColor = '#e6332a'; // rood
-					document.getElementById('enovationstatus').innerHTML = 'Enovation having ISSUES';
+					enovationstatus.style.backgroundColor = '#e6332a'; // rood
+					enovationstatus.innerHTML = 'Enovation having ISSUES';
 				} else if (statustext.match(/Ongoing/s)) {
                     let notice = page.querySelector('h3.notice-subject')?.innerText || "Ongoing";
-                    document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status: ' + notice;
+                    enovationstatus.style.backgroundColor = '#2980b9'; // blauw
+					enovationstatus.innerHTML = 'Enovation status: ' + notice;
 				} else if (statustext.match(/In onderzoek/s)) {
-                    document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status: In onderzoek';
+                    enovationstatus.style.backgroundColor = '#2980b9'; // blauw
+					enovationstatus.innerHTML = 'Enovation status: In onderzoek';
 				} else if (statustext.match(/Underway/s)) {
-                    document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
-					document.getElementById('enovationstatus').innerHTML = 'Enovation status: Underway';
+                    enovationstatus.style.backgroundColor = '#2980b9'; // blauw
+					enovationstatus.innerHTML = 'Enovation status: Underway';
 				} else if (statustext.match(/(Scheduled maintenance|We have planned maintenance)/s)) {
-					document.getElementById('enovationstatus').style.backgroundColor = '#2980b9'; // blauw
-					document.getElementById('enovationstatus').innerHTML = 'Enovation onderhoud';
+					enovationstatus.style.backgroundColor = '#2980b9'; // blauw
+					enovationstatus.innerHTML = 'Enovation onderhoud';
 				} else {
-					document.getElementById('enovationstatus').style.backgroundColor = '#93224c'; // paars-rood
-					document.getElementById('enovationstatus').innerHTML = statustext;
+					enovationstatus.style.backgroundColor = '#93224c'; // paars-rood
+					enovationstatus.innerHTML = statustext;
 					console.log("Enovation status onbekend",statustext);
 				}
 			} else if (xmlhttp.readyState != 4) {
-				document.getElementById('enovationstatus').style.backgroundColor = '#e9cd43'; // oranje
-				document.getElementById('enovationstatus').innerHTML = 'Enovation status wordt opgehaald';
+				enovationstatus.style.backgroundColor = '#e9cd43'; // oranje
+				enovationstatus.innerHTML = 'Enovation status wordt opgehaald';
 			} else if (xmlhttp.status != 200) {
-				document.getElementById('enovationstatus').style.backgroundColor = '#b718c1'; // paars
-				document.getElementById('enovationstatus').innerHTML = 'Enovation status ophalen mislukt';
+				enovationstatus.style.backgroundColor = '#b718c1'; // paars
+				enovationstatus.innerHTML = 'Enovation status ophalen mislukt';
 			}
 		}
+
 		xmlhttp.open("GET","https://status.enovationgroup.com/",true);
 		xmlhttp.send();
 	};
