@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.5.26.1
+// @version      2026.6.1.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.1.1
+- aanpassing voor 16. wis gekopieerde spaties alleen bij focus op het zoek vak
 
 versie 2026.5.26.1
 - fix voor detectie beheerders configuratie menu
@@ -1690,6 +1693,58 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
+    // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+    self.applyTrimClipboard = () => {
+        let searchinput = document.body.querySelector('header input[type=text]');
+        if (!searchinput) return;
+
+        if (searchinput.classList.contains('tribetoolsfocus')) return;
+        self.observer.disconnect();
+
+        searchinput.classList.add('tribetoolsfocus');
+        searchinput.addEventListener('focus',async (e) => {
+            if (!self.settings.enabletrimclipboard) return;
+
+            try {
+                let items = await navigator.clipboard.read();
+                //console.log("read clipboard length:",items.length);
+                for (const item of items) {
+                    if (item.types.includes("text/html")) {
+                        //console.log("skip clipboard rich-text");
+                        // doe niks met rich-text
+                        const blob = await item.getType("text/html");
+                        const blobText = await blob.text();
+                        // console.log(blob);
+                        // console.log(blobText);
+                    } else {
+                        //console.log("read clipboard item:",item);
+                        // check clipboard, trim spaces
+                        navigator.clipboard.readText().then((text) => {
+                            //console.log("read clipboard text:",text);
+                            if (text.trim() != text) {
+                                navigator.clipboard.writeText(text.trim()).then(() => {
+                                    console.log(`${GM_info.script.name} - Spaties gewist voor en achter de gekopieerde platte tekst`,text.trim());
+                                }).catch(e => {
+                                    console.warn(`${GM_info.script.name} - Schrijf toegang tot het clipboard is mislukt`,e.toString());
+                                    // self.settings.enabletrimclipboard = false;
+                                    // self.storeSettings();
+                                });
+                            };
+                        }).catch(e => {
+                            console.warn(`${GM_info.script.name} - Lees toegang (readText) van het clipboard is mislukt`,e.toString());
+                            // self.settings.enabletrimclipboard = false;
+                            // self.storeSettings();
+                        });
+                    }
+                }
+            } catch(e) {
+                console.warn(`${GM_info.script.name} - Lees toegang (read) van het clipboard is mislukt`,e.toString());
+            }
+        },false);
+
+        self.observer.connect();
+    };
+
     // 17. Maak de breedte passend voor de weergave keuzelijst
     self.applyComboWidth = () => {
         let stylesheet = document.querySelector('style.tribetoolscombowidth');
@@ -1972,6 +2027,8 @@ button.tribetoolshideai {
         // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
         self.applyAdvancedFields();
 
+        // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+        self.applyTrimClipboard();
         // 17. Maak de breedte passend voor de weergave keuzelijst
         self.applyComboWidth();
         // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
@@ -2034,9 +2091,10 @@ button.tribetoolshideai {
         });
     };
 
-    self.setupFocus = () => {
+    // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+    self.setupTrimClipboard = () => {
+        return;
         window.addEventListener('focus', async () => {
-            // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
             if (self.settings.enabletrimclipboard) {
                 try {
                     let items = await navigator.clipboard.read();
@@ -2122,7 +2180,7 @@ button.tribetoolshideai {
 
     self.monitorTribeChanges = () => {
         self.setupBlur();
-        self.setupFocus();
+        // self.setupTrimClipboard();
         self.setupObserver(document.documentElement || document.body,self.applyChanges);
     };
 
