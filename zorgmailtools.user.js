@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.4.22.1
+// @version      2026.6.3.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,9 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+versie 2026.6.3.1
+- probleem opgelost met weergave van zorgmail password textarea in MCenter
+
 version 2026.4.22.1
 - probleem opgelost met opslaan en weergave van zorgmail password textarea in MCenter
 
@@ -180,6 +183,9 @@ version 1.0.0.20230516.144500
     display: block;
     cursor: hand;
 }
+.zorgmailtoolstablewidth {
+    width: 25%;
+}
 `;
         self.observer.connect();
     };
@@ -274,91 +280,72 @@ version 1.0.0.20230516.144500
             },false);
         });
 
-        document.querySelectorAll('#optionspasswords\\.newHMActivationCode\\.password:not(.zorgmailtoolsshowdetails)').forEach(password => {
-            let username = document.getElementById('optionspasswords.newHMActivationCode.username')?.innerText;
-            if (!username) return;
-
+        let email = document.getElementById('options.myAddress.viewMode.defaultAddressBookSecureEmail')?.innerText;
+        let newpassword = document.querySelector('#optionspasswords\\.newHMActivationCode\\.password')?.innerText;
+        let username = document.getElementById('optionspasswords.newHMActivationCode.username')?.innerText;
+        let selectedUser = document.getElementById('selectedUser')?.innerText.replace(' (' + username + '@lms.lifeline.nl)','').trim();
+        if (newpassword && username) {
             self.observer.disconnect();
-            password.classList.add('zorgmailtoolsshowdetails');
 
-            let newRow = password.parentElement.parentElement.parentElement.insertRow(3);
-            let leftCell = newRow.insertCell();
-            leftCell.style.verticalAlign = 'top';
+            let copydetailstextarea = document.body.querySelector('textarea.zorgmailtoolspassword');
+            if (!copydetailstextarea) {
+                let newrow = document.createElement('tr');
+                let passwordrow = document.querySelector('#optionspasswords\\.newHMActivationCode\\.password').closest('tr');
+                passwordrow.after(newrow);
+                let leftCell = newrow.insertCell();
+                leftCell.style.verticalAlign = 'top';
+                leftCell.innerText = 'Brief gegevens:';
+                let rightCell = newrow.insertCell();
 
-            leftCell.appendChild(document.createTextNode('Brief gegevens:'));
+                copydetailstextarea = rightCell.appendChild(document.createElement('textarea'));
+                copydetailstextarea.className = 'zorgmailtoolspassword';
+                copydetailstextarea.cols = 50;
+                copydetailstextarea.rows = 5;
+                let buttonarea = rightCell.appendChild(document.createElement('div'));
+                let copyButton = buttonarea.appendChild(document.createElement('button'));
+                copyButton.appendChild(document.createTextNode("Selecteer en kopieer"));
+                copyButton.addEventListener("click", function () {
+                    copydetailstextarea.focus();
+                    copydetailstextarea.select();
+                    document.execCommand("Copy");
+                }, false);
 
-            let newCell = newRow.insertCell();
+                let message = rightCell.appendChild(document.createElement('div'));
+                message.style.fontWeight = 'bold';
+                message.textContent = 'Let op: De activatiecode wordt pas actief na een klik op OK';
+            }
 
-            let textarea = newCell.appendChild(document.createElement('textarea'));
-            textarea.setAttribute("id", "HWpassword");
-            textarea.cols = "50";
-            textarea.rows = "5";
+            copydetailstextarea.value = selectedUser + "\n" + username + "\n" + newpassword + "\n" + email;
+        }
 
-            newCell.appendChild(document.createElement('br'));
-
-            let copyButton = newCell.appendChild(document.createElement('button'));
-            copyButton.appendChild(document.createTextNode("Selecteer en kopieer"));
-            copyButton.addEventListener("click", function () {
-                textarea.focus();
-                textarea.select();
-                document.execCommand("Copy");
-            }, false);
-
-            let message = newCell.appendChild(document.createElement('span'));
-            message.style.fontWeight = 'bold';
-            message.textContent = 'Let op: De activatiecode wordt pas actief na een klik op OK';
-
-            let selectedUser = document.getElementById('selectedUser')?.innerText.replace(' (' + username + '@lms.lifeline.nl)','').trim();
-            let email = document.getElementById('options.myAddress.viewMode.defaultAddressBookSecureEmail')?.innerText;
-
-            textarea.value = selectedUser + "\n" + username + "\n" + password.innerText + "\n" + email;
-        });
-
-        document.querySelectorAll('.gwt-ETable.credential-table.zorgmailtoolstable').forEach(passwordstable => {
-            if (passwordstable.rows.length > 1) return;
-
-            self.observer.disconnect();
-            passwordstable.classList.remove('zorgmailtoolstable');
-            self.observer.connect();
-        });
-
-        document.querySelectorAll('.gwt-ETable.credential-table:not(.zorgmailtoolstablewidth)').forEach(passwordstable => {
-            self.observer.disconnect();
-            passwordstable.classList.add('zorgmailtoolstablewidth');
-            passwordstable.rows[0].cells[0].width = '';
-            passwordstable.rows[0].cells[1].width = '25%';
-        });
-
+        // verwijder de class zorgmailtoolstablewidth als de tabel leeg is (alleen header regel)
         document.querySelectorAll('.gwt-ETable.credential-table').forEach(passwordstable => {
-            if (passwordstable.querySelector('.zorgmailtoolspassworddetected')) return;
-            if (passwordstable.rows.length <= 1) return;
+            if (passwordstable.rows.length <= 1) {
+                self.observer.disconnect();
+                passwordstable.querySelector('tr').cells[1].classList.remove('zorgmailtoolstablewidth');
+                self.observer.connect();
+            }
+        });
 
+        let lastactiverow = [...document.querySelectorAll('.gwt-ETable.credential-table tr:not(.zorgmailtoolspassworddetected)')].filter(tr => tr.cells[0].innerText == 'Hosted Mailbox' && tr.cells[1].innerText == 'Activatiecode').reverse()[0];
+        if (lastactiverow) {
             self.observer.disconnect();
-            passwordstable.rows[1].classList.add('zorgmailtoolspassworddetected');
+            lastactiverow.classList.add('zorgmailtoolspassworddetected');
 
-            // find last row with an active Activatiecode
-            let lastactiverow = undefined;
-            let user;
-            [...passwordstable.rows].forEach(row => {
-                if (row.cells.length > 4 && row.cells[1].textContent.trim() == 'Activatiecode' && row.cells[4].querySelector('.badge.badge-success')) {
-                    lastactiverow = row;
-                    user = row.cells[2].textContent.replace(/[^0-9].*$/,'');
-                }
-            });
+            // verwijder de breedte van de 1e kolom
+            document.querySelector('.gwt-ETable.credential-table tr').cells[0].width = '';
+            // pas de breedte van de 2e kolom aan naar 25%, om ruimte te maken voor extra velden
+            document.querySelector('.gwt-ETable.credential-table tr').cells[1].classList.add('zorgmailtoolstablewidth');
 
-            let removepasswordrow = passwordstable.querySelector('.zorgmailtoolsremovepasswordrow');
+            let user = lastactiverow.cells[2].innerText.replace(/[^0-9].*$/,'');
 
             let storedpasswords = self.getPasswords();
-            if (lastactiverow && storedpasswords[user]) {
-                if (removepasswordrow) removepasswordrow.remove();
-                let tdlist = lastactiverow.getElementsByTagName('td');
-                console.log("display active password",user,storedpasswords[user].password,Date(storedpasswords[user].created));
-                self.passwordtabletimerid = 'busy'; // needed to prevent DOMNodeInserted to get triggered again
-                // tdlist[1].innerHTML = tdlist[1].textContent.trim() + ':<br><textarea cols="50" rows="5">' + storedpasswords[user].textarea + '</textarea>'; // this will trigger the DOMNodeInserted event again!
+            if (user && user in storedpasswords) {
+                // console.log("display active password",user,storedpasswords[user].password,new Date(storedpasswords[user].created).toLocaleString().replace(/,/,''));
 
-                tdlist[1].textContent = tdlist[1].textContent.trim() + ' (door jou aangemaakt en alleen voor jou zichtbaar):';
+                lastactiverow.cells[1].innerHTML = lastactiverow.cells[1].innerText.trim() + `<br>(aangemaakt op ${new Date(storedpasswords[user].created).toLocaleString().replace(/,/,'')} en alleen voor jou zichtbaar):`;
 
-                let textarea = tdlist[1].appendChild(document.createElement('textarea'));
+                let textarea = lastactiverow.cells[1].appendChild(document.createElement('textarea'));
                 textarea.cols = "50";
                 textarea.rows = "5";
 
@@ -368,49 +355,23 @@ version 1.0.0.20230516.144500
                     let email = document.getElementById('options.myAddress.viewMode.defaultAddressBookSecureEmail')?.innerText;
                     let password = storedpasswords[user].password;
                     let textarea = selectedUser + "\n" + user + "\n" + password + "\n" + email;
-                    console.log('fix textarea',textarea);
+                    console.log('fixed textarea',textarea);
                     self.storePassword(user,password,textarea);
                     storedpasswords = self.getPasswords();
                 }
 
                 textarea.value = storedpasswords[user].textarea;
 
-                tdlist[1].appendChild(document.createElement('br'));
-
-                let copyButton = tdlist[1].appendChild(document.createElement('button'));
-                copyButton.appendChild(document.createTextNode("Selecteer en kopieer"));
-                copyButton.addEventListener("click", function () {
+                let buttonarea = lastactiverow.cells[1].appendChild(document.createElement('div'));
+                let copyButton = buttonarea.appendChild(document.createElement('button'));
+                copyButton.innerText = "Selecteer en kopieer";
+                copyButton.addEventListener('click', e => {
                     textarea.focus();
                     textarea.select();
                     document.execCommand("Copy");
                 }, false);
-
-                self.passwordtabletimerid = undefined;
-            } else {
-                user = document.querySelector('#selectedUser').innerText.replace(/^.*([0-9]{9})@.*$/g,'$1');
-                if (storedpasswords[user]) {
-                    // if there is no active row found, then the stored password is inactive
-                    if (removepasswordrow) removepasswordrow.remove();
-                    removepasswordrow = passwordstable.insertRow();
-                    removepasswordrow.classList.add('zorgmailtoolsremovepasswordrow');
-                    let cell1 = removepasswordrow.insertCell();
-                    let removebutton = cell1.appendChild(document.createElement('button'));
-                    removebutton.innerText = 'Verwijder verlopen activatiecode';
-                    let cell2 = removepasswordrow.insertCell();
-                    cell2.innerText = 'Activatiecode: ' + storedpasswords[user].password;
-                    let cell3 = removepasswordrow.insertCell();
-                    cell3.innerText = user;
-                    let cell4 = removepasswordrow.insertCell();
-                    cell4.innerText = self.getDateTime(storedpasswords[user].created);
-
-                    removebutton.addEventListener('click',e => {
-                        self.removePassword(user);
-                        removepasswordrow.remove();
-                    },false);
-                    // console.log("Tip: remove inactive password",user,storedpasswords[user].password);
-                }
             }
-        });
+        }
 
         self.observer.connect();
     };
@@ -969,6 +930,57 @@ version 1.0.0.20230516.144500
         self.observer.connect();
     };
 
+    self.applyfilter = (table) => {
+        //table.querySelectorAll('button.zorgmailtoolsfilter').forEach(*button,index) => {
+        //});
+    };
+
+    self.applyMCenterFilters = () => {
+        let table = document.querySelector('#archive\\.messageOverview\\.messageTable');
+        if (!table || table.querySelector('button.zorgmailtoolsfilter')) return;
+
+        let stylesheet = document.querySelector('style.zorgmailtoolsfilter');
+        if (!stylesheet) {
+            self.observer.disconnect();
+            let stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'zorgmailtoolsfilter';
+            stylesheet.innerHTML = `
+.zorgmailtoolsfilteractive {
+    background-color: green;
+}
+.zorgmailtoolsfilterhide {
+    display: none;
+}
+.zorgmailtoolsfilter:before {
+    /* https://www.svgrepo.com/svg/422522/filter-filters */
+    /* https://www.urlencoder.io/ */
+    content: url('data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20%3F%3E%3C!--%20Uploaded%20to%3A%20SVG%20Repo%2C%20www.svgrepo.com%2C%20Generator%3A%20SVG%20Repo%20Mixer%20Tools%20--%3E%0A%3Csvg%20width%3D%2213px%22%20height%3D%2213px%22%20viewBox%3D%222%202%2028%2028%22%20enable-background%3D%22new%200%200%2032%2032%22%20id%3D%22Editable-line%22%20version%3D%221.1%22%20xml%3Aspace%3D%22preserve%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%3Cpath%20d%3D%22%20%20M3.241%2C7.646L13%2C19v9l6-4v-5l9.759-11.354C29.315%2C6.996%2C28.848%2C6%2C27.986%2C6H4.014C3.152%2C6%2C2.685%2C6.996%2C3.241%2C7.646z%22%20fill%3D%22none%22%20id%3D%22XMLID_6_%22%20stroke%3D%22%23000000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-miterlimit%3D%2210%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E');
+}
+`;
+        }
+
+        self.observer.disconnect();
+        document.querySelectorAll('#archive\\.messageOverview\\.messageTable .gwt-ETable-header td').forEach((td,index) => {
+            let columntitle = td.innerText;
+            let button = document.createElement('button');
+            button.classList.add('zorgmailtoolsfilter');
+            button.filtertext = '';
+            button.addEventListener('click', e => {
+                let newtext = prompt(`Gebruik & voor 'en'. Gebruik | voor 'of'. Gebruikt ! voor 'niet'.\nVoer een filter text in voor kolom ${columntitle}:`,button.filtertext);
+                if (newtext == null) return;
+                button.filtertext = newtext;
+                if (button.filtertext) {
+                    button.classList.add('zorgmailtoolsfilteractive');
+                } else {
+                    button.classList.remove('zorgmailtoolsfilteractive');
+                }
+                self.applyfilter(table);
+            },false);
+            td.prepend(button);
+        });
+        self.observer.connect();
+    };
+
     self.applyFormFillerButton = () => {
         return; // helaas, dit werkt niet
 
@@ -1012,6 +1024,7 @@ version 1.0.0.20230516.144500
         self.applyMCenterButtons();
         self.applyMCenterCopySearchResults();
         self.applyMCenterSearchForm();
+        self.applyMCenterFilters();
         self.applyFormFillerButton();
     };
 
