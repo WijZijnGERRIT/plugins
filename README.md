@@ -31,5 +31,6 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
 22. Verberg de AI button
 23. Toon zoek resultaat details onder elkaar
+24. Selecteer na terugkeer het eerder geselecteerde submenu
 
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
