@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.15.1
+// @version      2026.6.15.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,7 +22,10 @@
     self.changelog = `
 Changelog:
 
-versie 2026.6.15.1
+versie 2026.6.15.2
+- nieuwe aanpassing:
+24. Selecteer na terugkeer het eerder geselecteerde submenu
+
 - nieuwe aanpassing:
 23. Toon zoek resultaat details onder elkaar
 - grote script opmaak aanpassingen door opties in een object te plaatsen
@@ -246,7 +249,9 @@ versie 2025.7.9.1
         enablehidenotitie: false,
         enableconfigurationstyle: true,
         enablehideai: false,
-        enablesearchresultformatting: false
+        enablesearchresultformatting: false,
+        enablerestoresubmenu: true,
+        restoresubmenu: {}
     };
 
     self.background = { // pointer to settings.colors or settings.colorsssandbox
@@ -2014,7 +2019,22 @@ button.tribetoolshideai {
 `;
         }
 
-            self.observer.connect();
+        self.observer.connect();
+    };
+
+    // 24. Selecteer na terugkeer het eerder geselecteerde submenu
+    self.applySubmenuRestore = () => {
+        document.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button:has(span[data-test-label]):not(.tribetoolssubmenubutton)').forEach(button => {
+            button.classList.add('tribetoolssubmenubutton');
+            if (self.settings.restoresubmenu[location.pathname] && button.querySelector('span[data-test-label]').getAttribute('data-test-label') == self.settings.restoresubmenu[location.pathname]) {
+                button.focus();
+                button.click();
+            }
+            button.addEventListener('click', e => {
+                self.settings.restoresubmenu[location.pathname] = button.querySelector('span[data-test-label]').getAttribute('data-test-label');
+                self.storeSettings();
+            },false);
+        });
     };
 
     self.setupBlur = () => {
@@ -2207,6 +2227,10 @@ button.tribetoolshideai {
             description: 'Toon zoek resultaat details onder elkaar',
             short: 'Zoek resultaat details onder elkaar',
             apply: self.applySearchResultFormatting
+        },
+        restoresubmenu: { // 24. Selecteer na terugkeer het eerder geselecteerde submenu
+            description: 'Selecteer automatisch het laatst geselecteerde submenu in het beheer scherm',
+            apply: self.applySubmenuRestore
         }
     };
 
