@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.1.2
+// @version      2026.6.15.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,14 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.15.1
+- nieuwe aanpassing:
+23. Toon zoek resultaat details onder elkaar
+- grote script opmaak aanpassingen door opties in een object te plaatsen
+
+versie 2026.6.8.1
+- fix voor detectie beheerders configuratie menu
 
 versie 2026.6.1.2
 - toevoeging aan admin config om automations lijst te kopieren
@@ -237,8 +245,10 @@ versie 2025.7.9.1
         scrollrestore: [],
         enablehidenotitie: false,
         enableconfigurationstyle: true,
-        enablehideai: false
+        enablehideai: false,
+        enablesearchresultformatting: false
     };
+
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
         undocolors: [],
@@ -1058,6 +1068,9 @@ div.popupmessage.tribetoolsdisplay {
 .tribetoolsoptions input {
     cursor: pointer;
 }
+label[for*=idmenu] {
+    cursor: pointer;
+}
 span.outercheckbox {
     transition: all 0.5s;
 }
@@ -1220,7 +1233,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             info.style.paddingLeft = '16px';
             info.style.paddingRight = '16px';
             info.innerHTML = GM_info.script.description.replace(/([^0-9])\./g,"$1.<br>\n");
-            info.innerHTML += `<p><a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">Controleer zelf op updates</a>: <span class="tribetoolsversion">${GM_info.script.name} versie ${GM_info.script.version}</span></p>`;
+            info.innerHTML += `<p>Versie: <span class="tribetoolsversion">${GM_info.script.name} versie ${GM_info.script.version}</span> (<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">Controleer op updates</a>)</p>`;
 
             lastrow.before(info);
 
@@ -1416,8 +1429,6 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.disconnect();
         document.querySelector('.MuiPaper-rounded').parentElement.parentElement.appendChild(createContainer());
 
-        addChekboxOption('enableautoclosemessages',`Toon een optie om bekende mededelingen automatisch te sluiten. Via een extra (i) knop kun je de mededelingen alsnog lezen.`, self.applyInfoButton);
-
         let backgroundcolorsoption = addChekboxOption('enablebackgroundcolors','Achtergrondkleur', self.applyColorStylesheet);
 
         let backgroundcolorscolumn2 = backgroundcolorsoption.querySelector('.tribetoolscolumn2');
@@ -1453,49 +1464,11 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             updateColorpickerTable();
         },false);
 
-        addChekboxOption('enableoverflowtitles',`Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)`, self.applyOverflowtitles);
-        addChekboxOption('enablesearchtabselect',`Toon optie om een favoriete zoek tab te selecteren`);
-        addChekboxOption('enableopensubheaders',`Bewaar en herstel de status van opengeklapte velden lijstjes`);
-        addChekboxOption('enablelogontips',`Toon inlog tips en een knop zodra het inloggen mislukt door cookie problemen`);
-        addChekboxOption('enablepacknamedisplay',`Toon de naam van de Tribe omgeving (productie of sandbox)`, self.applyPackName);
-        addChekboxOption('enablepagetitles',`Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel`, self.applyPageTitle);
-        addChekboxOption('enableexportcheckboxes',`Bewaar en herstel de status van aangevinkte opties bij een export`);
-
-        // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
-        addChekboxOption('enablelabeltextvertical',`Toon labels en tekst velden onder elkaar ipv naast elkaar`,self.applyLabelTextVertical);
-
-        // 11. Plaats de +Notitie knop als laatste knop
-        addChekboxOption('enablebuttonorder',`Plaats de +Notitie knop als laatste knop`,self.applyButtonOrder);
-
-        // 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
-        addChekboxOption('enablemystyle',`Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)`,self.applyMyStyle);
-
-        // 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
-        addChekboxOption('enablescrollcenter',`Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)`);
-
-        // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
-        addChekboxOption('enablelistblur',`Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)`);
-
-        // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
-        addChekboxOption('enabletrimclipboard',`Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)`,self.setupClipboardAccess);
-
-        // 17. Maak de breedte passend voor de weergave keuzelijst
-        addChekboxOption('enablecombowidth',`Maak de breedte passend voor de weergave keuzelijst`,self.applyComboWidth);
-        // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
-        addChekboxOption('enablescrollrestore',`Herstel de scroll positie na terugkeer naar een eerder geopend scherm`);
-        // 19. Voorkom het sluiten van een popup door naast de popup te klikken
-        addChekboxOption('enablenoclickarea',`Voorkom het sluiten van een popup door naast de popup te klikken`,self.appyNoClickArea);
-
-        // 20. Verberg knop Notitie toevoegen bij een Organisatie
-        addChekboxOption('enablehidenotitie',`Verberg knop Notitie toevoegen bij een Organisatie`,() => {
-            self.applyHideNotitie();
-            self.applyButtonOrder();
+        Object.keys(self.options).forEach(key => {
+            if (self.options[key].description && `enable${key}` in self.settings) {
+                addChekboxOption(`enable${key}`,self.options[key].description,typeof self.options[key].check == 'function' ? self.options[key].check : self.options[key].apply);
+            }
         });
-
-        // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
-        addChekboxOption('enableconfigurationstyle',`Aangepaste (opvallende) weergave voor beheerders configuratie menu`);
-        // 22. Verberg de AI button
-        addChekboxOption('enablehideai',`Verberg de AI button`,self.applyHideAI);
 
         // restart monitoring
         self.observer.connect();
@@ -1527,49 +1500,13 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         }
 
         let idbase = 'idmenu_';
-        Object.entries({
-            enablesearchtabselect: 'Favoriete zoek tab',
-            enablelabeltextvertical: 'Labels en tekst onder elkaar',
-            enablebuttonorder: 'Notitie knop als laatste',
-            enablemystyle: 'Aangepaste weergave',
-            enabletrimclipboard: 'Wis gekopieerde spaties',
-            enablecombowidth: 'Keuzelijst breedte',
-            enablescrollrestore: 'Herstel scroll positie',
-            enablenoclickarea: 'Voorkom popup sluiten',
-            enablehidenotitie: 'Verberg +notitie bij organisaties'
-        }).forEach(([setting,text]) => {
+
+        Object.keys(self.options).filter(key => self.options[key].short).forEach(key => {
             let menuoption = tribetoolsarea.appendChild(document.createElement('span'));
-            menuoption.appendChild(self.addCheckbox(setting,e =>{
-                switch(setting) {
-                    case 'enablesearchtabselect':
-                        break;
-                    case 'enablelabeltextvertical':
-                        self.applyLabelTextVertical();
-                        break;
-                    case 'enablebuttonorder':
-                        self.applyButtonOrder();
-                        break;
-                    case 'enablemystyle':
-                        self.applyMyStyle();
-                        break;
-                    case 'enabletrimclipboard':
-                        self.setupClipboardAccess();
-                        break;
-                    case 'enablecombowidth':
-                        self.applyComboWidth();
-                        break;
-                    case 'enablenoclickarea':
-                        self.applyNoClickArea();
-                        break;
-                    case 'enablehidenotitie':
-                        self.applyHideNotitie();
-                        self.applyButtonOrder();
-                        break;
-                }
-            },idbase));
+            menuoption.appendChild(self.addCheckbox(`enable${key}`,self.options[key].apply,idbase));
             let label = menuoption.appendChild(document.createElement('label'));
-            label.setAttribute('for',`${idbase}${setting}`);
-            label.innerHTML = text;
+            label.setAttribute('for',`${idbase}enable${key}`);
+            label.innerHTML = self.options[key].short;
         });
 
         pluginversion = tribetoolsarea.appendChild(document.createElement('span'));
@@ -1955,7 +1892,7 @@ div.tribetoolsconfiguration > div:has(div > button) {
             configelement.classList.remove('tribetoolsconfiguration');
         } else if (!configelement && self.settings.enableconfigurationstyle) {
             configelement = document.querySelector('[data-test-label="Generic.Configuration"]')?.parentElement?.parentElement?.parentElement?.parentElement;
-            if (configelement && !configelement.querySelector('header') && configelement.classList.contains('MuiBox-root')) {
+            if (configelement && !configelement.querySelector('header') && configelement.classList.contains('MuiBox-root') && configelement.querySelector('[data-test-id="configuration-back-button"]')) {
                 self.observer.disconnect();
                 configelement.classList.add('tribetoolsconfiguration');
             }
@@ -2059,59 +1996,25 @@ button.tribetoolshideai {
         self.observer.connect();
     };
 
-    self.applyChanges = () => {
-        self.restoreSettings(); // update de settings
+    // 23. Toon zoek resultaat details onder elkaar
+    self.applySearchResultFormatting = () => {
+        let stylesheet = document.querySelector('style.tribetoolsearchresultformatting');
+        if (stylesheet && !self.settings.enablesearchresultformatting) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (!stylesheet && self.settings.enablesearchresultformatting) {
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.type = "text/css";
+            stylesheet.className = 'tribetoolsearchresultformatting';
+            stylesheet.innerHTML = `
+[class*=listCard] div.MuiStack-root:has(> .tribe-size-md) {
+    flex-direction: column;
+}
+`;
+        }
 
-        self.addTribeToolsStylesheet();
-
-        // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
-        self.applyInfoButton();
-        // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
-        self.applyOverflowtitles();
-        // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
-        self.applySearchTab();
-        // 4. Zodra er een foutmelding komt bij het inloggen, geef dan het advies om cookies te verwijderen en een knop om opnieuw de Tribe app site te openen
-        self.applyLogonTips();
-        // 5. Toon de naam van de werkomgeving Productie of Sandbox
-        self.applyPackName();
-        // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
-        self.applyColorStylesheet();
-        // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
-        self.applyCollapsedSubHeaders();
-        // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
-        self.applyPageTitle();
-        // 9. Bewaar en herstel de status van aangevinkte opties bij een export
-        self.applyExportChekboxes();
-        // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
-        self.applyLabelTextVertical();
-        // 11. Plaats de +Notitie knop als laatste knop
-        self.applyButtonOrder();
-        // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
-        self.applyMyStyle();
-        // 13. Breng een geselecteerd item in een lijst in beeld (handig bij uren en minuten)
-        self.applyScrollCenter();
-
-        // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
-        self.applyAdvancedFields();
-
-        // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
-        self.applyTrimClipboard();
-        // 17. Maak de breedte passend voor de weergave keuzelijst
-        self.applyComboWidth();
-        // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
-        self.applyScrollRestore();
-
-        // 19. Voorkom het sluiten van een popup door naast de popup te klikken
-        self.applyNoClickArea();
-        // 20. Verberg knop Notitie toevoegen bij een Organisatie
-        self.applyHideNotitie();
-        // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
-        self.applyConfigurationStyle();
-        // 22. Verberg de AI button
-        self.applyHideAI();
-
-        self.applySettings();
-        self.applyPluginVersion();
+            self.observer.connect();
     };
 
     self.setupBlur = () => {
@@ -2199,6 +2102,127 @@ button.tribetoolshideai {
                 }
             }
         },false);
+    };
+
+    self.options = {
+        autoclosemessages: { // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
+            description: 'Toon een optie om bekende mededelingen automatisch te sluiten. Via een extra (i) knop kun je de mededelingen alsnog lezen.',
+            apply: self.applyInfoButton
+        },
+        overflowtitles: { // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
+            description: 'Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)',
+            apply: self.applyOverflowtitles
+        },
+        searchtabselect: { // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
+            description: 'Toon optie om een favoriete zoek tab te selecteren',
+            short: 'Favoriete zoek tab',
+            apply: self.applySearchTab
+        },
+        colorstylesheet: { // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
+            apply: self.applyColorStylesheet
+        },
+        opensubheaders: { // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
+            description: 'Bewaar en herstel de status van opengeklapte velden lijstjes',
+            apply: self.applyCollapsedSubHeaders
+        },
+        logontips: { // 4. Zodra er een foutmelding komt bij het inloggen, geef dan het advies om cookies te verwijderen en een knop om opnieuw de Tribe app site te openen
+            description: 'Toon inlog tips en een knop zodra het inloggen mislukt door cookie problemen',
+            apply: self.applyLogonTips
+        },
+        packnamedisplay: { // 5. Toon de naam van de werkomgeving Productie of Sandbox
+            description: 'Toon de naam van de Tribe omgeving (productie of sandbox)',
+            apply: self.applyPackName
+        },
+        pagetitles: { // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
+            description: 'Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel',
+            apply: self.applyPageTitle
+        },
+        exportcheckboxes: { // 9. Bewaar en herstel de status van aangevinkte opties bij een export
+            description: 'Bewaar en herstel de status van aangevinkte opties bij een export',
+            apply: self.applyExportChekboxes
+        },
+        labeltextvertical: { // 10. Toon labels en tekst velden onder elkaar ipv naast elkaar
+            description: 'Toon labels en tekst velden onder elkaar ipv naast elkaar',
+            short: 'Labels en tekst onder elkaar',
+            apply: self.applyLabelTextVertical
+        },
+        buttonorder: { // 11. Plaats de +Notitie knop als laatste knop
+            description: 'Plaats de +Notitie knop als laatste knop',
+            short: 'Notitie knop als laatste',
+            apply: self.applyButtonOrder
+        },
+        mystyle: { // 12. Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)
+            description: 'Pas een aangepaste weergave toe (onder andere lijntjes rond de notitie kaders)',
+            short: 'Aangepaste weergave',
+            apply: self.applyMyStyle
+        },
+        scrollcenter: { // 13. Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)
+            description: 'Breng een geselecteerd list item in een lijst in beeld (handig bij uren en minuten)',
+            apply: self.applyScrollCenter
+        },
+        listblur: { // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+            description: 'Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)'
+        },
+        advancedfields: { // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
+            apply: self.applyAdvancedFields
+        },
+        trimclipboard: { // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+            description: 'Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma\'s)',
+            short: 'Wis gekopieerde spaties',
+            check: self.setupClipboardAccess,
+            apply: self.applyTrimClipboard
+        },
+        combowidth: { // 17. Maak de breedte passend voor de weergave keuzelijst
+            description: 'Maak de breedte passend voor de weergave keuzelijst',
+            short: 'Keuzelijst breedte',
+            apply: self.applyComboWidth
+        },
+        scrollrestore: { // 18. Herstel de scroll positie na terugkeer naar een eerder geopend scherm
+            description: 'Herstel de scroll positie na terugkeer naar een eerder geopend scherm',
+            short: 'Herstel scroll positie',
+            apply: self.applyScrollRestore
+        },
+        noclickarea: { // 19. Voorkom het sluiten van een popup door naast de popup te klikken
+            description: 'Voorkom het sluiten van een popup door naast de popup te klikken',
+            short: 'Voorkom popup sluiten',
+            apply: self.appyNoClickArea
+        },
+        hidenotitie: { // 20. Verberg knop Notitie toevoegen bij een Organisatie
+            description: 'Verberg knop Notitie toevoegen bij een Organisatie',
+            short: 'Verberg +notitie bij organisaties',
+            apply: () => {
+                self.applyHideNotitie();
+                self.applyButtonOrder();
+            }
+        },
+        configurationstyle: { // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
+            description: 'Aangepaste (opvallende) weergave voor beheerders configuratie menu',
+            apply: self.applyConfigurationStyle
+        },
+        hideai: { // 22. Verberg de AI button
+            description: 'Verberg de AI button',
+            apply: self.applyHideAI
+        },
+        searchresultformatting: { // 23. Toon zoek resultaat details onder elkaar
+            description: 'Toon zoek resultaat details onder elkaar',
+            short: 'Zoek resultaat details onder elkaar',
+            apply: self.applySearchResultFormatting
+        }
+    };
+
+    self.applyChanges = () => {
+        self.restoreSettings(); // update de settings
+
+        self.addTribeToolsStylesheet();
+
+        Object.keys(self.options).forEach(key => {
+            if (typeof self.options[key].apply == 'function') {
+                self.options[key].apply();
+            }
+        });
+
+        self.applySettings();
+        self.applyPluginVersion();
     };
 
     self.createObserver = (target,callback) => {
