@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.15.2
+// @version      2026.6.16.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -17,10 +17,16 @@
     'use strict';
 
     if (typeof window.plugin !== 'function') window.plugin = () => {};
-    let self = window.plugin.tribetools = () => {};
+    const self = window.plugin.tribetools = () => {};
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.16.1
+- herstructurering van functies in de plugin
+- volledige aanpassing van de techniek voor 7. Bewaar en herstel de status van opengeklapte velden lijstjes
+- nieuwe aanpassing:
+25. Verplaats bij de tabel Automations de kolom Naam naar het einde
 
 versie 2026.6.15.2
 - nieuwe aanpassing:
@@ -251,7 +257,8 @@ versie 2025.7.9.1
         enablehideai: false,
         enablesearchresultformatting: false,
         enablerestoresubmenu: true,
-        restoresubmenu: {}
+        restoresubmenu: {},
+        enableautomationscolumns: true
     };
 
     self.background = { // pointer to settings.colors or settings.colorsssandbox
@@ -263,14 +270,16 @@ versie 2025.7.9.1
     self.zoekmijninstellingen = false;
     self.observer = {};
 
-    self.clickMySettings = () => {
+    self.utils = {};
+
+    self.utils.clickMySettings = () => {
         if (!self.zoekmijninstellingen) return;
         let menuitemmijninstellingen = Array.from(document.querySelectorAll("[role=menuitem]")).filter(el=>el.innerText.match(/(Mijn account|My account)/));
         if (!menuitemmijninstellingen.length) return;
         self.zoekmijninstellingen = false;
         menuitemmijninstellingen[0].click();
     };
-    self.openMySettings = () => {
+    self.utils.openMySettings = () => {
         if (window.location.href.match(/\/user-settings/)) {
             self.zoekmijninstellingen = false;
             return;
@@ -284,20 +293,20 @@ versie 2025.7.9.1
             console.log(GM_info.script.name + " - Menu item Mijn account/My account niet gevonden");
             self.zoekmijninstellingen = false;
         },500);
-        self.clickMySettings();
+        self.utils.clickMySettings();
     };
 
-    self.storeSettings = () => {
+    self.utils.storeSettings = () => {
         localStorage.setItem('tribecrmtools',JSON.stringify(self.settings));
     };
-    self.restoreSettings = () => {
+    self.utils.restoreSettings = () => {
         let data = localStorage.getItem('tribecrmtools');
         if (data) data = JSON.parse(data);
         if (!data || typeof data != 'object' || data instanceof Array) {
             if (window.location.href.match(/\/user-settings/)) {
-                self.storeSettings();
+                self.utils.storeSettings();
             } else {
-                // self.openMySettings();
+                // self.utils.openMySettings();
             }
             return;
         };
@@ -308,16 +317,16 @@ versie 2025.7.9.1
         }
     };
 
-    self.sandboxEnvironment = () => {
+    self.utils.sandboxEnvironment = () => {
         let avatars = document.querySelectorAll('.MuiStack-root.css-1uwrsdx .MuiAvatar-root');
         if (!avatars.length) return undefined;
         let sandboxavatar = [...avatars].find(avatar => avatar.innerText == 'S');
         return sandboxavatar ? true : false;
     };
 
-    self.prepareColors = () => {
+    self.utils.prepareColors = () => {
         // references to settings:
-        let environment = self.sandboxEnvironment() ? 'sandbox' : '';
+        let environment = self.utils.sandboxEnvironment() ? 'sandbox' : '';
         self.background = {
             colors: self.settings[`colors${environment}`],
             undocolors: self.settings[`undocolors${environment}`],
@@ -327,7 +336,7 @@ versie 2025.7.9.1
 
     // 1. Geef een optie om de Tribe mededeling bovenaan het scherm voortaan altijd automatisch te sluiten
     self.applyInfoButton = () => {
-        function addInfoButton() {
+        const addInfoButton = () => {
             let popupmessage = document.querySelector('.popupmessage');
             if (!popupmessage) {
                 self.observer.disconnect();
@@ -379,14 +388,14 @@ versie 2025.7.9.1
                         popupmessage.querySelector('button.removeallmessages').addEventListener('click', e => {
                             if (confirm(`Mededelingen zullen opnieuw getoond worden als ze nog actief zijn.\n\nAlles wissen?`)) {
                                 self.settings.bekendemededelingen = [];
-                                self.storeSettings();
+                                self.utils.storeSettings();
                                 popupmessage.classList.remove('tribetoolsdisplay');
                             }
                         },false);
                     }
                     popupmessage.querySelector('button.settings').addEventListener('click', e => {
                         popupmessage.classList.remove('tribetoolsdisplay');
-                        self.openMySettings();
+                        self.utils.openMySettings();
                     },false);
                     popupmessage.querySelector('button.closedialog').addEventListener('click', e => {
                         popupmessage.classList.remove('tribetoolsdisplay');
@@ -528,9 +537,9 @@ div.popupmessage.tribetoolsdisplay {
 
             // restart monitoring
             self.observer.connect();
-        }
+        };
 
-        function removeKnownInfo() {
+        const removeKnownInfo = () => {
             let message = document.querySelector('.MuiAlert-message')?.innerText;
             let closebutton = document.querySelector('.MuiAlert-message')?.parentElement?.querySelector("[data-testid=CloseIcon]")?.closest('button');
             if (message && closebutton) {
@@ -555,11 +564,11 @@ div.popupmessage.tribetoolsdisplay {
                         let index = self.settings.bekendemededelingen.indexOf(message);
                         if (checkbox.checked && index == -1) {
                             self.settings.bekendemededelingen.push(message);
-                            self.storeSettings();
+                            self.utils.storeSettings();
                             console.log(GM_info.script.name + " - Auto sluit (voortaan) deze bekende mededeling:",message);
                         } else if (checkbox.checked && index != -1) {
                             self.settings.bekendemededelingen.splice(index,1);
-                            self.storeSettings();
+                            self.utils.storeSettings();
                         }
                     });
 
@@ -567,9 +576,9 @@ div.popupmessage.tribetoolsdisplay {
                     self.observer.connect();
                 }
             }
-        }
+        };
 
-        function removeKnownFooter() {
+        const removeKnownFooter = () => {
             let message = document.querySelector('#pendo-base')?.innerText;
             if (!message) return;
 
@@ -600,27 +609,27 @@ div.popupmessage.tribetoolsdisplay {
                     let index = self.settings.bekendemededelingen.indexOf(message);
                     if (checkbox.checked && index == -1) {
                         self.settings.bekendemededelingen.push(message);
-                        self.storeSettings();
+                        self.utils.storeSettings();
                         console.log(GM_info.script.name + " - Auto sluit (voortaan) deze bekende mededeling:",message);
                     } else if (checkbox.checked && index != -1) {
                         self.settings.bekendemededelingen.splice(index,1);
-                        self.storeSettings();
+                        self.utils.storeSettings();
                     }
                 });
 
                 // restart monitoring
                 self.observer.connect();
             }
-        }
+        };
 
-        function removeInfoButton() {
+        const removeInfoButton = () => {
             let button = document.querySelector('.tribetoolsinfo');
             if (!button) return;
 
             self.observer.disconnect();
             button.remove();
             self.observer.connect();
-        }
+        };
 
         if (self.settings.enableautoclosemessages) {
             addInfoButton();
@@ -697,7 +706,7 @@ div.popupmessage.tribetoolsdisplay {
                     }
                     radiobutton.addEventListener('click',e => {
                         self.settings.searchtab = e.target.value;
-                        self.storeSettings();
+                        self.utils.storeSettings();
                     });
                     if (!firstbutton) firstbutton = radiobutton;
                 });
@@ -705,7 +714,7 @@ div.popupmessage.tribetoolsdisplay {
                 if (!checkedbutton) {
                     firstbutton.checked = true;
                     self.settings.searchtab = firstbutton.value;
-                    self.storeSettings();
+                    self.utils.storeSettings();
                 }
 
                 self.observer.connect();
@@ -776,7 +785,7 @@ div.popupmessage.tribetoolsdisplay {
 
     // 5. Toon de naam van de werkomgeving Productie of Sandbox
     self.applyPackName = () => {
-        if (typeof self.sandboxEnvironment() != 'boolean') return;
+        if (typeof self.utils.sandboxEnvironment() != 'boolean') return;
 
         let packname = document.querySelector('.tribetoolspackname');
         if (self.settings.enablepacknamedisplay && !packname) {
@@ -788,7 +797,7 @@ div.popupmessage.tribetoolsdisplay {
                 packname = document.createElement('div');
                 packname.className = 'tribetoolspackname';
 
-                if (self.sandboxEnvironment()) {
+                if (self.utils.sandboxEnvironment()) {
                     console.log(GM_info.script.name + " - Sandbox omgeving");
                     packname.innerText = 'Sandbox';
                 } else {
@@ -814,7 +823,7 @@ div.popupmessage.tribetoolsdisplay {
         stylesheet.className = "tribetoolscolors";
 
         if (self.settings.enablebackgroundcolors) {
-            self.prepareColors();
+            self.utils.prepareColors();
             stylesheet.innerHTML = `
 #root > div.MuiBox-root[class*=css-] > .MuiBox-root.css-0, div[style*=linear-gradient] {
     background-image: linear-gradient(235deg, ${self.background.colors[0]}, ${self.background.colors[1]}, ${self.background.colors[2]}) !important;
@@ -845,31 +854,25 @@ div.popupmessage.tribetoolsdisplay {
 
     // 7. Bewaar en herstel de status van opengeklapte velden lijstjes
     self.applyCollapsedSubHeaders = () => {
-        let subheaders = document.querySelectorAll('.tribe-header-variant-subheader');
+        let subheaders = document.querySelectorAll('.MuiBox-root:has(> .tribe-header-variant-subheader h6)');
         if (!subheaders.length) return;
 
-        subheaders.forEach((el) => {
-            let headertext = el.querySelector('h6')?.innerText;
+        subheaders.forEach(subheader => {
+            let headertext = subheader.querySelector('h6')?.innerText;
             if (!headertext) return;
-            if (el.classList.contains('tribetoolssubheader')) return;
 
-            self.observer.disconnect();
-            el.classList.add('tribetoolssubheader');
-            // add extra click event to detect open/close state
-            el.addEventListener('click', e => {
-                if (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader')) { // store open state
-                    self.settings.opensubheaders[headertext] = 1;
-                    self.storeSettings();
-                } else if (self.settings.opensubheaders[headertext]) { // closed, remove open state
-                    delete(self.settings.opensubheaders[headertext]);
-                    self.storeSettings();
+            let headeropen = !!subheader.nextSibling?.classList.contains('MuiCollapse-root');
+            if (!subheader.classList.contains('tribetoolssubheaderrestored')) {
+                self.observer.disconnect();
+                subheader.classList.add('tribetoolssubheaderrestored');
+                if (self.settings.enableopensubheaders && (headertext in self.settings.opensubheaders) && self.settings.opensubheaders[headertext] != headeropen) {
+                    // restore state
+                    subheader.querySelector('h6').click();
                 }
-                // console.log('subheader clicked',headertext,settings.opensubheaders[headertext]?'opened':'closed');
-            },false);
-            // console.log('subheader detected',headertext,settings.opensubheaders[headertext],settings.opensubheaders[headertext] && (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader'))?'restore open':'keep same');
-            // apply stored open state (keep open if already open)
-            if (self.settings.enableopensubheaders && self.settings.opensubheaders[headertext] && (!el.nextSibling || el.nextSibling.classList.contains('tribe-header-variant-subheader'))) {
-                el.click();
+            } else {
+                // store current state
+                self.settings.opensubheaders[headertext] = headeropen;
+                self.utils.storeSettings();
             }
         });
         self.observer.connect();
@@ -936,7 +939,7 @@ div.popupmessage.tribetoolsdisplay {
                     self.settings.exportcheckboxes[index] = input.checked;
                 }
             });
-            self.storeSettings();
+            self.utils.storeSettings();
         },false);
         self.observer.connect();
     };
@@ -1031,7 +1034,7 @@ div.popupmessage.tribetoolsdisplay {
         checkbox.addEventListener('click',e => {
             e.stopPropagation();
             self.settings[settingsname] = e.target.checked;
-            self.storeSettings();
+            self.utils.storeSettings();
             // sync same named checkboxes, value and visual
             document.querySelectorAll(`input[type=checkbox][name=tribetools${settingsname}]`).forEach(othercheckbox => {
                 othercheckbox.checked = self.settings[settingsname];
@@ -1189,6 +1192,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     background-color: #f3faf8;
     border-radius: 15px;
 }
+.tribetoolshiderow {
+    display: none;
+}
 `;
         self.observer.disconnect();
         document.head.appendChild(stylesheet);
@@ -1202,7 +1208,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         if (document.querySelector('.tribetoolsoptions')) return; // already added
         if (!document.querySelector('[class*=lastRow]')) return; // required element not ready
 
-        function createContainer() {
+        const createContainer = () => {
             let div = document.querySelector('.MuiPaper-rounded')?.parentElement;
             if (!div) return;
 
@@ -1243,9 +1249,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             lastrow.before(info);
 
             return newdiv;
-        }
+        };
 
-        function addChekboxOption(settingsname,description,callback) {
+        const addChekboxOption = (settingsname,description,callback) => {
             let idbase = 'id_';
             // neem de opmaak over van de eerste regel met instelligen:
             let firsitemrow = document.querySelectorAll('.MuiPaper-rounded .MuiGrid-container .MuiGrid-item')[1];
@@ -1266,14 +1272,14 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             },idbase));
 
             return document.querySelector('.tribetoolsoptionscontainter').appendChild(option);
-        }
+        };
 
-        function updateColorpickerTable() {
-            function storeColor(index,selectedColor) {
+        const updateColorpickerTable = () => {
+            const storeColor = (index,selectedColor) => {
                 self.background.colors[index] = selectedColor;
-                self.storeSettings();
+                self.utils.storeSettings();
                 self.applyColorStylesheet();
-            }
+            };
 
             // colorpicker
             //  undobutton
@@ -1282,7 +1288,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             //  copybutton
             //  pastebutton
 
-            function updateColorButtons(index,undobutton,redobutton) {
+            const updateColorButtons = (index,undobutton,redobutton) => {
                 undobutton.querySelector('.text').innerText = self.background.undocolors[index].length;
                 redobutton.querySelector('.text').innerText = self.background.redocolors[index].length;
 
@@ -1298,21 +1304,21 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 colorpickertable.querySelectorAll('button.copybutton').forEach((el,index) => {
                     el.disabled = self.copiedColor == self.background.colors[index];
                 });
-            }
+            };
 
             let colorpickertable = document.querySelector('table.tribetoolscolorpicker');
             if (!colorpickertable) return;
             [...colorpickertable.rows].reverse().forEach(row => row.remove()); // remove all table rows
 
-            self.prepareColors();
+            self.utils.prepareColors();
             self.background.colors.forEach((color,index) => {
                 if (!(self.background.undocolors[index] instanceof Array)) {
                     self.background.undocolors[index] = [];
-                    self.storeSettings();
+                    self.utils.storeSettings();
                 }
                 if (!(self.background.redocolors[index] instanceof Array)) {
                     self.background.redocolors[index] = [];
-                    self.storeSettings();
+                    self.utils.storeSettings();
                 }
 
                 let row = colorpickertable.appendChild(document.createElement('tr'));
@@ -1391,9 +1397,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 },false);
             });
             self.applyColorStylesheet();
-        }
+        };
 
-        function updateColorFavorites(parent) {
+        const updateColorFavorites = (parent) => {
             let table = parent.querySelector('table.colorfavorites');
             if (!table) {
                 table = parent.appendChild(document.createElement('table'));
@@ -1402,7 +1408,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 table.innerHTML = '';
             }
 
-            self.prepareColors();
+            self.utils.prepareColors();
             self.settings.colorfavorites.forEach((colorset,favindex) => {
                 let row = table.appendChild(document.createElement('tr'));
                 row.innerHTML = `
@@ -1418,17 +1424,17 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                         self.background.redocolors[index].length = 0;
                         self.background.colors[index] = self.settings.colorfavorites[favindex][index];
                     });
-                    self.storeSettings();
+                    self.utils.storeSettings();
                     updateColorpickerTable();
                 },false);
                 removebutton.addEventListener('click', (event) => {
                     if (!confirm('Weet je zeker dat je deze favoriete kleuren combinatie wilt verwijderen?')) return;
                     self.settings.colorfavorites.splice(favindex, 1);
-                    self.storeSettings();
+                    self.utils.storeSettings();
                     updateColorFavorites(parent);
                 },false);
             });
-        }
+        };
 
         // stop monitoring
         self.observer.disconnect();
@@ -1450,14 +1456,14 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 <button class="storefavorite">Bewaar als favoriete combinatie</button>
 `;
 
-        self.prepareColors();
+        self.utils.prepareColors();
         updateColorpickerTable();
         updateColorFavorites(backgroundcolorscolumn2);
 
         colorstorage.querySelector(`button.storefavorite`).addEventListener('click', (event) => {
             if (self.settings.colorfavorites.filter((favorite) => favorite.join("\t") == self.background.colors.join("\t")).length) return;
             self.settings.colorfavorites.push([...self.background.colors]);
-            self.storeSettings();
+            self.utils.storeSettings();
             updateColorFavorites(backgroundcolorscolumn2);
             self.applyColorStylesheet();
         },false);
@@ -1465,7 +1471,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             if (!confirm('Weet je zeker dat je de kleuren keuze undo/redo historie wilt verwijderen?')) return;
             self.background.undocolors.forEach(colors => { colors.length = 0; });
             self.background.redocolors.forEach(colors => { colors.length = 0; });
-            self.storeSettings();
+            self.utils.storeSettings();
             updateColorpickerTable();
         },false);
 
@@ -1476,49 +1482,6 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         });
 
         // restart monitoring
-        self.observer.connect();
-    };
-
-    self.applyPluginVersion = () => {
-        let menuitems = document.querySelectorAll('ul[role=menu]');
-        if (menuitems.length < 3) return;
-        let menu = menuitems[1].closest('.MuiStack-root'); // document.querySelector('.MuiStack-root.css-y9h912');
-        if (!menu) return;
-        let pluginversion = menu.querySelector('.tribetoolsversion');
-        if (pluginversion) return;
-        self.observer.disconnect();
-
-        let tribetoolsarea = menu.appendChild(document.createElement('div'));
-        tribetoolsarea.className = 'tribetoolsmenu';
-
-        let accountbutton = [...menu.querySelectorAll('span')].find(span => span.innerText == 'person')?.closest('li');
-        if (accountbutton) {
-            let settingsbutton = tribetoolsarea.appendChild(document.createElement('li'));
-            settingsbutton.className = accountbutton.className;
-            settingsbutton.innerHTML = accountbutton.innerHTML;
-            settingsbutton.querySelector('span').innerText = 'settings';
-            settingsbutton.querySelector('p').innerText = 'Bekijk alle Tribe CRM Tools instellingen';
-            settingsbutton.addEventListener('click',e => {
-                e.stopPropagation();
-                accountbutton.click();
-            });
-        }
-
-        let idbase = 'idmenu_';
-
-        Object.keys(self.options).filter(key => self.options[key].short).forEach(key => {
-            let menuoption = tribetoolsarea.appendChild(document.createElement('span'));
-            menuoption.appendChild(self.addCheckbox(`enable${key}`,self.options[key].apply,idbase));
-            let label = menuoption.appendChild(document.createElement('label'));
-            label.setAttribute('for',`${idbase}enable${key}`);
-            label.innerHTML = self.options[key].short;
-        });
-
-        pluginversion = tribetoolsarea.appendChild(document.createElement('span'));
-        pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
-        pluginversion.classList.add('tribetoolsversion');
-        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name} versie ${GM_info.script.version}</a>`;
-
         self.observer.connect();
     };
 
@@ -1622,6 +1585,18 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.connect();
     };
 
+    // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
+    self.setupBlur = () => {
+        window.addEventListener('blur', () => {
+            if (self.settings.enablelistblur) {
+                if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
+                    console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
+                    document.activeElement.blur();
+                }
+            }
+        },false);
+    };
+
     // 15. Herstel de stand van de checkbox voor Geavanceerd (bij velden toevoegen)
     self.applyAdvancedFields = () => {
         let advancedswitch = document.querySelector('p:has(span[data-test-label="Generic.Advanced"])')?.previousSibling?.querySelector('input[type=checkbox]:not(.tribetoolsadvanced)');
@@ -1633,7 +1608,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         }
         advancedswitch.addEventListener('click', e => {
             self.settings.advancedswitchchecked = advancedswitch.checked;
-            self.storeSettings();
+            self.utils.storeSettings();
         },false);
         self.observer.connect();
     };
@@ -1672,13 +1647,13 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                                 }).catch(e => {
                                     console.warn(`${GM_info.script.name} - Schrijf toegang tot het clipboard is mislukt`,e.toString());
                                     // self.settings.enabletrimclipboard = false;
-                                    // self.storeSettings();
+                                    // self.utils.storeSettings();
                                 });
                             };
                         }).catch(e => {
                             console.warn(`${GM_info.script.name} - Lees toegang (readText) van het clipboard is mislukt`,e.toString());
                             // self.settings.enabletrimclipboard = false;
-                            // self.storeSettings();
+                            // self.utils.storeSettings();
                         });
                     }
                 }
@@ -1688,6 +1663,39 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         },false);
 
         self.observer.connect();
+    };
+
+    // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
+    self.setupClipboardAccess = () => {
+        if (!self.settings.enabletrimclipboard) return;
+
+        let disableClipboardAccess = () => {
+            self.settings.enabletrimclipboard = false;
+            self.utils.storeSettings();
+            self.updateCheckboxes();
+        };
+
+        // trigger clipboard access
+        navigator.clipboard.readText().then(text => {
+            console.log(`${GM_info.script.name} - Clipboard lees toegang is mogelijk`);
+            setTimeout(() => {
+                navigator.clipboard.writeText(text).then(() => {
+                    console.log(`${GM_info.script.name} - Clipboard schrijf toegang is mogelijk`);
+                }).catch(e => {
+                    console.log(`${GM_info.script.name} - Clipboard writeText error`,e.toString());
+                    if (!e.toString().match(/Document is not focused/i)) {
+                        alert("Test clipboard toegang\n\nSchrijf toegang tot het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
+                        disableClipboardAccess();
+                    }
+                });
+            },1000);
+        }).catch(e => {
+            console.log(`${GM_info.script.name} - Clipboard readText error`,e.toString());
+            if (!e.toString().match(/Document is not focused/i)) {
+                alert("Test clipboard toegang\n\nLees toegang van het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
+                disableClipboardAccess();
+            }
+        });
     };
 
     // 17. Maak de breedte passend voor de weergave keuzelijst
@@ -1717,7 +1725,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         let keepactiverestores = self.settings.scrollrestore.filter(restore => restore.timestamp > new Date().getTime() - 1000 * 60 * 60 * 24);
         if (keepactiverestores.length < self.settings.scrollrestore.length) {
             self.settings.scrollrestore = keepactiverestores;
-            self.storeSettings();
+            self.utils.storeSettings();
         }
 
         if (!self.settings.enablescrollrestore) return;
@@ -1749,7 +1757,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 } else {
                     self.settings.scrollrestore.push(restore);
                 }
-                self.storeSettings();
+                self.utils.storeSettings();
             },false);
         }
         self.observer.connect();
@@ -1934,7 +1942,7 @@ div.tribetoolsconfiguration > div:has(div > button) {
                         return;
                     }
                     let text = ['entiteit','type','actief','naam','beschrijving','trigger'].join("\t") + "\n";
-                    let entity = document.body.querySelector('h4 span').innerText;
+                    let entity = document.body.querySelector('h4 span,h4').innerText;
                     text += [...document.body.querySelectorAll('input[type=checkbox]')].map(checkbox => {
                         let tr = checkbox.closest('tr');
                         if (entity == 'Automations' && tr.querySelectorAll('td').length == 5) {
@@ -2032,96 +2040,90 @@ button.tribetoolshideai {
             }
             button.addEventListener('click', e => {
                 self.settings.restoresubmenu[location.pathname] = button.querySelector('span[data-test-label]').getAttribute('data-test-label');
-                self.storeSettings();
+                self.utils.storeSettings();
             },false);
         });
     };
 
-    self.setupBlur = () => {
-        window.addEventListener('blur', () => {
-            // 14. Wis de focus van het actieve list element (om automatisch uitklappen te voorkomen)
-            if (self.settings.enablelistblur) {
-                if (document.activeElement?.getAttribute('aria-autocomplete') == 'list') {
-                    console.log(`${GM_info.script.name} - Wis de focus van het actieve list element (om uitklappen te voorkomen)`); // ,document.activeElement);
-                    document.activeElement.blur();
-                }
-            }
-        },false);
-    };
+    // 25. Plaats de kolom Naam als laatste bij de Automations
+    self.applyAutomationsColumns = () => {
+        if (!self.settings.enableautomationscolumns) return;
 
-    self.setupClipboardAccess = () => {
-        if (!self.settings.enabletrimclipboard) return;
-
-        let disableClipboardAccess = () => {
-            self.settings.enabletrimclipboard = false;
-            self.storeSettings();
-            self.updateCheckboxes();
-        };
-
-        // trigger clipboard access
-        navigator.clipboard.readText().then(text => {
-            console.log(`${GM_info.script.name} - Clipboard lees toegang is mogelijk`);
-            setTimeout(() => {
-                navigator.clipboard.writeText(text).then(() => {
-                    console.log(`${GM_info.script.name} - Clipboard schrijf toegang is mogelijk`);
-                }).catch(e => {
-                    console.log(`${GM_info.script.name} - Clipboard writeText error`,e.toString());
-                    if (!e.toString().match(/Document is not focused/i)) {
-                        alert("Test clipboard toegang\n\nSchrijf toegang tot het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
-                        disableClipboardAccess();
-                    }
-                });
-            },1000);
-        }).catch(e => {
-            console.log(`${GM_info.script.name} - Clipboard readText error`,e.toString());
-            if (!e.toString().match(/Document is not focused/i)) {
-                alert("Test clipboard toegang\n\nLees toegang van het clipboard is mislukt.\nDeze optie wordt uitgeschakeld.");
-                disableClipboardAccess();
-            }
-        });
-    };
-
-    // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
-    self.setupTrimClipboard = () => {
-        return;
-        window.addEventListener('focus', async () => {
-            if (self.settings.enabletrimclipboard) {
-                try {
-                    let items = await navigator.clipboard.read();
-                    console.log("read clipboard",items.length);
-                    for (const item of items) {
-                        if (item.types.includes("text/html")) {
-                            console.log("skip clipboard rich-text");
-                            // doe niks met rich-text
-                            const blob = await item.getType("text/html");
-                            const blobText = await blob.text();
-                            // console.log(blob);
-                            // console.log(blobText);
-                        } else {
-                            console.log("read clipboard",item);
-                            // check clipboard, trim spaces
-                            navigator.clipboard.readText().then((text) => {
-                                if (text.trim() != text) {
-                                    navigator.clipboard.writeText(text.trim()).then(() => {
-                                        console.log(`${GM_info.script.name} - Spaties gewist voor en achter de gekopieerde platte tekst`);
-                                    }).catch(e => {
-                                        console.log(`${GM_info.script.name} - Schrijf toegang tot het clipboard is mislukt`,e.toString());
-                                        // self.settings.enabletrimclipboard = false;
-                                        // self.storeSettings();
-                                    });
-                                };
-                            }).catch(e => {
-                                console.log(`${GM_info.script.name} - Lees toegang (readText) van het clipboard is mislukt`,e.toString());
-                                // self.settings.enabletrimclipboard = false;
-                                // self.storeSettings();
-                            });
+        self.observer.disconnect();
+        let tables = [...document.querySelectorAll('table')].filter(table => table.querySelectorAll('thead > tr > th').length == 4 && table.querySelectorAll('thead > tr > th')[1].innerText == 'Naam');
+        tables.forEach(table => {
+            [...table.rows].forEach(row => {
+                row.cells[3].after(row.cells[1]);
+            });
+            let checkboxarea = table.rows[0].cells[2].appendChild(document.createElement('div'));
+            let checkbox = checkboxarea.appendChild(document.createElement('input'));
+            checkbox.type = 'checkbox';
+            checkbox.addEventListener('change',e => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (checkbox.checked) {
+                    [...table.rows].forEach(row => {
+                        console.log('checkbox.checked',row.querySelector('[data-test-checked=false]'),row.querySelector('input[type=checkbox]')?.checked);
+                        if (row.querySelector('[data-test-checked=false]') && row.querySelector('input[type=checkbox]')?.checked == false) {
+                            row.classList.add('tribetoolshiderow');
                         }
-                    }
-                } catch(e) {
-                    console.log(`${GM_info.script.name} - Lees toegang (read) van het clipboard is mislukt`,e.toString());
+                    });
+                } else {
+                    table.querySelectorAll('.tribetoolshiderow').forEach(element => element.classList.remove('tribetoolshiderow'));
                 }
-            }
-        },false);
+            },false);
+        });
+
+        tables = [...document.querySelectorAll('table')].filter(table => table.querySelectorAll('thead > tr > th').length == 5 && table.querySelectorAll('thead > tr > th')[2].innerText == 'Naam');
+        tables.forEach(table => {
+            [...table.rows].forEach(row => {
+                row.cells[4].after(row.cells[2]);
+            });
+        });
+        self.observer.connect();
+    };
+
+    self.applyPluginVersion = () => {
+        let menuitems = document.querySelectorAll('ul[role=menu]');
+        if (menuitems.length < 3) return;
+        let menu = menuitems[1].closest('.MuiStack-root'); // document.querySelector('.MuiStack-root.css-y9h912');
+        if (!menu) return;
+        let pluginversion = menu.querySelector('.tribetoolsversion');
+        if (pluginversion) return;
+        self.observer.disconnect();
+
+        let tribetoolsarea = menu.appendChild(document.createElement('div'));
+        tribetoolsarea.className = 'tribetoolsmenu';
+
+        let accountbutton = [...menu.querySelectorAll('span')].find(span => span.innerText == 'person')?.closest('li');
+        if (accountbutton) {
+            let settingsbutton = tribetoolsarea.appendChild(document.createElement('li'));
+            settingsbutton.className = accountbutton.className;
+            settingsbutton.innerHTML = accountbutton.innerHTML;
+            settingsbutton.querySelector('span').innerText = 'settings';
+            settingsbutton.querySelector('p').innerText = 'Bekijk alle Tribe CRM Tools instellingen';
+            settingsbutton.addEventListener('click',e => {
+                e.stopPropagation();
+                accountbutton.click();
+            });
+        }
+
+        let idbase = 'idmenu_';
+
+        Object.keys(self.options).filter(key => self.options[key].short).forEach(key => {
+            let menuoption = tribetoolsarea.appendChild(document.createElement('span'));
+            menuoption.appendChild(self.addCheckbox(`enable${key}`,self.options[key].apply,idbase));
+            let label = menuoption.appendChild(document.createElement('label'));
+            label.setAttribute('for',`${idbase}enable${key}`);
+            label.innerHTML = self.options[key].short;
+        });
+
+        pluginversion = tribetoolsarea.appendChild(document.createElement('span'));
+        pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
+        pluginversion.classList.add('tribetoolsversion');
+        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name} versie ${GM_info.script.version}</a>`;
+
+        self.observer.connect();
     };
 
     self.options = {
@@ -2231,11 +2233,15 @@ button.tribetoolshideai {
         restoresubmenu: { // 24. Selecteer na terugkeer het eerder geselecteerde submenu
             description: 'Selecteer automatisch het laatst geselecteerde submenu in het beheer scherm',
             apply: self.applySubmenuRestore
+        },
+        automationscolumns: { // 25. Verplaats bij de tabel Automations de kolom Naam naar het einde
+            description: 'Verplaats bij de tabel Automations de kolom Naam naar het einde',
+            apply: self.applyAutomationsColumns
         }
     };
 
-    self.applyChanges = () => {
-        self.restoreSettings(); // update de settings
+    self.utils.applyChanges = () => {
+        self.utils.restoreSettings(); // update de settings
 
         self.addTribeToolsStylesheet();
 
@@ -2249,7 +2255,7 @@ button.tribetoolshideai {
         self.applyPluginVersion();
     };
 
-    self.createObserver = (target,callback) => {
+    self.utils.createObserver = (target,callback) => {
         if (!target || typeof callback != 'function') return;
 
         // Run callback when changes are detected in target:
@@ -2286,17 +2292,16 @@ button.tribetoolshideai {
         return observer;
     };
 
-    self.setupObserver = (target,callback) => {
-        self.observer = self.createObserver(target,self.applyChanges);
+    self.utils.setupObserver = (target,callback) => {
+        self.observer = self.utils.createObserver(target,self.utils.applyChanges);
         // run and start monitoring
-        self.applyChanges();
+        self.utils.applyChanges();
         self.observer.start();
     };
 
-    self.monitorTribeChanges = () => {
+    self.utils.monitorTribeChanges = () => {
         self.setupBlur();
-        // self.setupTrimClipboard();
-        self.setupObserver(document.documentElement || document.body,self.applyChanges);
+        self.utils.setupObserver(document.documentElement || document.body,self.utils.applyChanges);
     };
 
     console.log('plugin loaded: ' + GM_info.script.name + ' version ' + GM_info.script.version);
@@ -2308,7 +2313,7 @@ button.tribetoolshideai {
         localStorage.removeItem('tribeclosemessages');
         localStorage.removeItem('tribesearchhelp');
 
-        self.restoreSettings();
-        self.monitorTribeChanges();
+        self.utils.restoreSettings();
+        self.utils.monitorTribeChanges();
     }
 })();
