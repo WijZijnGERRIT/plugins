@@ -33,5 +33,6 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 23. Toon zoek resultaat details onder elkaar
 24. Selecteer na terugkeer het eerder geselecteerde submenu
 25. Verplaats bij de tabel Automations de kolom Naam naar het einde
+26. Houdt bij de Rollen de kolom kop in beeld
 
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
