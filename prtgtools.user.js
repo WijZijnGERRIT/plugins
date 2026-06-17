@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         PRTG tools
-// @version      2026.6.2.1
+// @version      2026.6.17.1
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/prtg/prtgtools.user.js
 // @description  Add page numbers, a countdown timer and clock (by replacing element <id=pagenumbers> and optionally <id=clock>)), and current Enovation status (OK or ERROR), and proxy status
@@ -184,6 +184,7 @@
 		enovationstatus.style.color = '#FFF';
 		enovationstatus.style.borderRadius = '6px';
 		enovationstatus.style.padding = '10px 12px';
+        enovationstatus.style.lineHeight = 1.6;
 
 		enovationstatus.style.backgroundColor = '#c1a418'; // bruin-oranje
 		enovationstatus.innerHTML = 'Enovation status ophalen...';
@@ -217,7 +218,7 @@
 				} else if (statustext.match(/Underway/s)) {
                     enovationstatus.style.backgroundColor = '#2980b9'; // blauw
 					enovationstatus.innerHTML = 'Enovation status: Underway';
-				} else if (statustext.match(/(Scheduled maintenance|We have planned maintenance)/s)) {
+				} else if (statustext.match(/(Scheduled maintenance|We have planned maintenance|Onderhoud - Maintenance)/s)) {
 					enovationstatus.style.backgroundColor = '#2980b9'; // blauw
 					enovationstatus.innerHTML = 'Enovation onderhoud';
 				} else if (statustext.match(/(Spoedonderhoud|Spoed onderhoud)/s)) {
