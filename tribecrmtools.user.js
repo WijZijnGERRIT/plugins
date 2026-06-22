@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.17.1
+// @version      2026.6.22.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,14 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.22.1
+- grote verbetering aangebracht voor 25. Verplaats bij de tabel Automations de kolom Naam naar het einde
+- opties die alleen nuttig zijn voor beheerders gemarkeerd met: (admins)
+
+versie 2026.6.17.2
+- kleine aanpassing in de hoogte van de Rollen rechten
+- verbetering aangebracht voor het kopieren van de automations lijst
 
 versie 2026.6.17.1
 - betere tabel detectie voor 25. Verplaats bij de tabel Automations de kolom Naam naar het einde
@@ -1925,13 +1933,13 @@ div.tribetoolsconfiguration > div:has(div > button) {
             let automationbutton = [...document.body.querySelectorAll('button:has(span.MuiBox-root)')].find(button => button.querySelector('span.MuiBox-root').innerText == 'Automation');
             let addbutton = [...document.body.querySelectorAll('button:has(span[data-test-label])')].find(button => button.querySelector('span[data-test-label]').innerText == 'Toevoegen');
             let entity = document.body.querySelector('h4 span')?.innerText;
-            if (automationbutton || entity == 'Automations') {
+            if (automationbutton || addbutton && entity == 'Automations') {
                 self.observer.disconnect();
                 getautomationsbutton = document.createElement('button');
                 getautomationsbutton.className = automationbutton?.className || addbutton.className;
                 getautomationsbutton.classList.add('tribetoolsgetautomations');
                 getautomationsbutton.innerHTML = automationbutton?.innerHTML || addbutton.innerHTML;
-                getautomationsbutton.querySelector('span.material-icons-outlined,i.material-icons').innerText = 'content_copy';
+                getautomationsbutton.querySelector('span.material-icons-outlined,i.material-icons,span.material-symbols-outlined').innerText = 'content_copy';
                 getautomationsbutton.querySelector('span.MuiBox-root,span[data-test-label]').innerText = 'Kopieer lijst';
 
                 if (automationbutton) {
@@ -1943,32 +1951,60 @@ div.tribetoolsconfiguration > div:has(div > button) {
                     let loadmore = document.body.querySelector('[data-test-label="LoadMore"]');
                     if (loadmore) {
                         getautomationsbutton.loadmore = true;
-                        alert('Er wordt eerst meer data ingelezen');
-                        loadmore.click();
-                        return;
+                        if (confirm('Er is nog meer data. Wil je eerst meer laden?')) {
+                            loadmore.click();
+                            return;
+                        }
                     }
-                    let text = ['entiteit','type','actief','naam','beschrijving','trigger'].join("\t") + "\n";
-                    let entity = document.body.querySelector('h4 span,h4').innerText;
-                    text += [...document.body.querySelectorAll('input[type=checkbox]')].map(checkbox => {
+
+                    let columns = undefined;
+                    let text = ['entiteit','type','fail','actief','naam','beschrijving','trigger'].join("\t") + "\n";
+                    text += [...document.body.querySelectorAll('input[type=checkbox]')].filter(checkbox => checkbox.closest('tr') && checkbox.closest('tr').querySelector('td') && (checkbox.closest('tr').cells.length == 4 || checkbox.closest('tr').cells.length == 5)).map(checkbox => {
                         let tr = checkbox.closest('tr');
-                        if (entity == 'Automations' && tr.querySelectorAll('td').length == 5) {
-                            let icon = tr.querySelectorAll('td')[0].querySelector('span.material-icons').innerText;
-                            let entity = tr.querySelectorAll('td')[1].innerText;
-                            let title = tr.querySelectorAll('td')[2].querySelectorAll('.item-VhOseW')[0].innerText;
-                            let trigger = tr.querySelectorAll('td')[2].querySelectorAll('.item-VhOseW')[1].innerText;
-                            let description = tr.querySelectorAll('td')[2].querySelectorAll('.item-VhOseW')[2].innerText;
-                            let failicon = tr.querySelectorAll('td')[3].querySelector('span.material-icons')?.innerText || '';
+                        if (!columns) {
+                            // find columns
+                            columns = {
+                                icon: -1,
+                                entity: -1,
+                                title: -1,
+                                description: -1,
+                                trigger: -1,
+                                failicon: -1
+                            };
+                            [...tr.cells].forEach((cell,index) => {
+                                console.log(cell.outerHTML);
+                                if (cell.querySelector('span.material-icons') && columns.icon < 0) {
+                                    columns.icon = index;
+                                } else if (cell.innerHTML == cell.innerText) {
+                                    columns.entity = index;
+                                } else if (cell.querySelector('div[class^=root] > div[class^=item]')) {
+                                    columns.title = index;
+                                    columns.description = index;
+                                    columns.trigger = index;
+                                } else if (cell.querySelector('div > span.material-icons')) {
+                                    columns.failicon = index;
+                                }
+                            });
+                        }
+
+                        if (tr.cells.length == 5) {
+                            let icon = columns.icon >= 0 ? tr.cells[columns.icon].querySelector('span.material-icons').innerText : '';
+                            let entity = columns.entity >= 0 ? tr.cells[columns.entity].innerText : '';
+                            let title = columns.title >= 0 ? tr.cells[columns.title].querySelectorAll('[class^=item]')[0].innerText : '';
+                            let trigger = columns.trigger >= 0 ? tr.cells[columns.trigger].querySelectorAll('[class^=item]')[1].innerText : '';
+                            let description = columns.description >= 0 ? tr.cells[columns.description].querySelectorAll('[class^=item]')[2].innerText : '';
+                            let failicon = columns.failicon >= 0 ? tr.cells[columns.failicon].querySelector('span.material-icons')?.innerText || '' : '';
                             return [entity,icon,failicon,checkbox.checked,title,description,trigger].join("\t");
-                        } else if (tr.querySelectorAll('td').length == 4) {
-                            let icon = tr.querySelector('td span.material-icons').innerText;
+                        } else if (tr.cells.length == 4) {
+                            let icon = columns.icon >= 0 ? tr.querySelector('td span.material-icons').innerText : '';
                             let entity = document.body.querySelector('h4').innerText;
-                            let title = tr.querySelectorAll('td')[1].querySelectorAll('.item-VhOseW')[0].innerText;
-                            let trigger = tr.querySelectorAll('td')[1].querySelectorAll('.item-VhOseW')[1].innerText;
-                            let description = tr.querySelectorAll('td')[1].querySelectorAll('.item-VhOseW')[2].innerText;
-                            let failicon = tr.querySelectorAll('td')[2].querySelector('span.material-icons').innerText || '';
+                            let title = columns.title >= 0 ? tr.cells[columns.title].querySelectorAll('[class^=item]')[0].innerText : '';
+                            let trigger = columns.trigger >= 0 ? tr.cells[columns.trigger].querySelectorAll('[class^=item]')[1].innerText : '';
+                            let description = columns.description >= 0 ? tr.cells[columns.description].querySelectorAll('[class^=item]')[2].innerText : '';
+                            let failicon = columns.failicon >= 0 ? tr.cells[columns.failicon].querySelector('span.material-icons').innerText || '' : '';
                             return [entity,icon,failicon,checkbox.checked,title,description,trigger].join("\t");
                         } else {
-                            console.log(entity,tr.querySelectorAll('td').length,tr);
+                            console.log('Skip row',tr.querySelectorAll('td').length,tr);
                         }
                     }).join("\n");
                     navigator.clipboard.writeText(text).then(() => {
@@ -2053,48 +2089,70 @@ button.tribetoolshideai {
 
     // 25. Plaats de kolom Naam als laatste bij de Automations
     self.applyAutomationsColumns = () => {
-        if (!self.settings.enableautomationscolumns) return;
-
-        self.observer.disconnect();
-        let tables = [...document.querySelectorAll('table')].filter(table => table.querySelectorAll('thead > tr > th').length == 4 && (table.querySelectorAll('tbody > tr > td')[1]?.querySelector('[class^=root] > [class^=item]') || table.querySelectorAll('thead > tr > th')[1]?.innerText == 'Naam'));
-        tables.forEach(table => {
-            [...table.rows].forEach((row,index) => {
-                if (index > 0 && row.cells[1]?.querySelector('[class^=root] > [class^=item]') || index == 0 && row.cells[1]?.innerText == 'Naam') {
-                    row.cells[3].after(row.cells[1]);
-                }
-            });
-
-            if (!table.querySelector('.tribetoolsautomationsfilter')) {
-                let checkboxarea = table.rows[0].cells[2].appendChild(document.createElement('div'));
-                checkboxarea.className = 'tribetoolsautomationsfilter';
-                let checkbox = checkboxarea.appendChild(document.createElement('input'));
-                checkbox.type = 'checkbox';
-                checkbox.addEventListener('change',e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (checkbox.checked) {
-                        [...table.rows].forEach(row => {
-                            console.log('checkbox.checked',row.querySelector('[data-test-checked=false]'),row.querySelector('input[type=checkbox]')?.checked);
-                            if (row.querySelector('[data-test-checked=false]') && row.querySelector('input[type=checkbox]')?.checked == false) {
-                                row.classList.add('tribetoolshiderow');
-                            }
-                        });
-                    } else {
-                        table.querySelectorAll('.tribetoolshiderow').forEach(element => element.classList.remove('tribetoolshiderow'));
+        if (self.settings.enableautomationscolumns && location.pathname.match(/^\/configuration\/automations/)) {
+            let tables = [...document.body.querySelectorAll('table')].filter(table => table.querySelectorAll('thead > tr > th').length == 5 && (table.querySelectorAll('tbody > tr > td')[2]?.querySelector('[class^=root] > [class^=item]') || table.querySelectorAll('thead > tr > th')[2]?.innerText == 'Naam'));
+            tables.forEach(table => {
+                [...table.rows].forEach((row,index) => {
+                    if (index > 0 && row.cells[2]?.querySelector('[class^=root] > [class^=item]') || index == 0 && row.cells[2]?.innerText == 'Naam') {
+                        self.observer.disconnect();
+                        row.cells[4].after(row.cells[2]);
                     }
-                },false);
-            }
-        });
+                });
+            });
+            self.observer.connect();
+        } else if (self.settings.enableautomationscolumns && location.pathname.match(/^\/.*\/configuration\/automations/)) {
+            let tables = [...document.body.querySelectorAll('table')].filter(table => table.querySelectorAll('thead > tr > th').length == 4 && (table.querySelectorAll('tbody > tr > td')[1]?.querySelector('[class^=root] > [class^=item]') || table.querySelectorAll('thead > tr > th')[1]?.innerText == 'Naam'));
+            tables.forEach(table => {
+                [...table.rows].forEach((row,index) => {
+                    if (index > 0 && row.cells[1]?.querySelector('[class^=root] > [class^=item]') || index == 0 && row.cells[1]?.innerText == 'Naam') {
+                        self.observer.disconnect();
+                        row.cells[3].after(row.cells[1]);
+                    }
+                });
+            });
+            self.observer.connect();
+        }
 
-        tables = [...document.querySelectorAll('table')].filter(table => table.querySelectorAll('thead > tr > th').length == 5 && (table.querySelectorAll('tbody > tr > td')[2]?.querySelector('[class^=root] > [class^=item]') || table.querySelectorAll('thead > tr > th')[2]?.innerText == 'Naam'));
-        tables.forEach(table => {
-            [...table.rows].forEach((row,index) => {
-                if (index > 0 && row.cells[2]?.querySelector('[class^=root] > [class^=item]') || index == 0 && row.cells[2]?.innerText == 'Naam') {
-                    row.cells[4].after(row.cells[2]);
+        if (location.pathname.match(/^\/.*\/configuration\/automations/)) {
+            document.body.querySelectorAll('table').forEach(table => {
+                let checkboxcolumn = [...table.querySelector('tbody tr').querySelectorAll('td')].findIndex(td => td.querySelector(':has(span[data-test-checked] input[type=checkbox])'));
+                if (checkboxcolumn >= 0 && !table.querySelector('.tribetoolsautomationsfilter')) {
+                    let checkboxarea = document.createElement('div');
+                    checkboxarea.className = 'tribetoolsautomationsfilter';
+                    let checkbox = checkboxarea.appendChild(document.createElement('input'));
+                    checkbox.type = 'checkbox';
+                    checkbox.addEventListener('change',e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (checkbox.checked) {
+                            [...table.rows].forEach(row => {
+                                if (row.querySelector('span[data-test-checked=false]') && row.querySelector('input[type=checkbox]')?.checked == false) {
+                                    row.classList.add('tribetoolshiderow');
+                                }
+                            });
+                        } else {
+                            table.querySelectorAll('.tribetoolshiderow').forEach(element => element.classList.remove('tribetoolshiderow'));
+                        }
+                    },false);
+                    checkboxarea.appendChild(document.createTextNode('filter'));
+                    self.observer.disconnect();
+                    table.rows[0].cells[checkboxcolumn].appendChild(checkboxarea);
+                    self.observer.connect();
                 }
             });
-        });
-        self.observer.connect();
+        }
+    };
+
+    self.highlightLastClickedItem = () => {
+        return;
+        if (!document.body.querySelector('#root').classList.contains('tribetoolslastclicked')) {
+            console.log('SETUP last click');
+            document.body.querySelector('#root').classList.add('tribetoolslastclicked');
+            document.body.querySelector('#root').addEventListener('click',e => {
+                e.target.style.border = '1px solid red';
+                console.log('last licked',e.target);
+            },false);
+        }
     };
 
     self.applyStickyroleheaders = () => {
@@ -2110,10 +2168,10 @@ button.tribetoolshideai {
             stylesheet.className = 'tribetoolsstickyroleheaders';
             stylesheet.innerHTML = `
 .MuiGrid-root:has(> .MuiPaper-root > [class^=root] > [class^=item] > .MuiBox-root > [class*=header] button > span.material-icons) {
-    height: 95vh;
+    height: calc(100vh - 53px);
 }
 .MuiGrid-root > .MuiPaper-root:has(> [class^=root] > [class^=item] > .MuiBox-root > [class*=header] button > span.material-icons) {
-    height: 93vh;
+    height: calc(100vh - 53px - 17px);
 }
 .MuiGrid-root > .MuiPaper-root > [class^=root]:has( > [class^=item] > .MuiBox-root > [class*=header] button > span.material-icons) {
     position: absolute;
@@ -2177,7 +2235,7 @@ button.tribetoolshideai {
             apply: self.applyInfoButton
         },
         overflowtitles: { // 2. Toon een titel (zodra de muis over de naam beweegt) bij lange namen die niet volledig in beeld passen
-            description: 'Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar)',
+            description: 'Toon lange namen als titels<br>(overal waar ... achter staat wordt dan leesbaar door de muis stil te houden)',
             apply: self.applyOverflowtitles
         },
         searchtabselect: { // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
@@ -2197,7 +2255,7 @@ button.tribetoolshideai {
             apply: self.applyLogonTips
         },
         packnamedisplay: { // 5. Toon de naam van de werkomgeving Productie of Sandbox
-            description: 'Toon de naam van de Tribe omgeving (productie of sandbox)',
+            description: '(admins) Toon de naam van de Tribe omgeving (productie of sandbox)',
             apply: self.applyPackName
         },
         pagetitles: { // 8. Toon dashboard-, relatie-, contact-, ticketnaam e.d. als pagina titel
@@ -2263,7 +2321,7 @@ button.tribetoolshideai {
             }
         },
         configurationstyle: { // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
-            description: 'Aangepaste (opvallende) weergave voor beheerders configuratie menu',
+            description: '(admins) Aangepaste (opvallende) weergave voor beheerders configuratie menu',
             apply: self.applyConfigurationStyle
         },
         hideai: { // 22. Verberg de AI button
@@ -2276,16 +2334,19 @@ button.tribetoolshideai {
             apply: self.applySearchResultFormatting
         },
         restoresubmenu: { // 24. Selecteer na terugkeer het eerder geselecteerde submenu
-            description: 'Selecteer automatisch het laatst geselecteerde submenu in het beheer scherm',
+            description: '(admins) Selecteer automatisch het laatst geselecteerde submenu in het beheer scherm',
             apply: self.applySubmenuRestore
         },
         automationscolumns: { // 25. Verplaats bij de tabel Automations de kolom Naam naar het einde
-            description: 'Verplaats bij de tabel Automations de kolom Naam naar het einde',
+            description: '(admins) Verplaats bij de tabel Automations de kolom Naam naar het einde',
             apply: self.applyAutomationsColumns
         },
         stickyroleheaders: { // 26. Houdt bij de Rollen de kolom kop in beeld
-            description: 'Houdt bij de Rollen de kolom kop in beeld',
+            description: '(admins) Houdt bij de Rollen de kolom kop in beeld',
             apply: self.applyStickyroleheaders
+        },
+        highlightlastclickeditem: {
+            apply: self.highlightLastClickedItem
         }
     };
 
