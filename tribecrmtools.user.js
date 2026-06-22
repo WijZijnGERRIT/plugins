@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.22.1
+// @version      2026.6.22.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.22.1
+- kleine aanpassing voor de label breedte bij 23. Toon zoek resultaat details onder elkaar
 
 versie 2026.6.22.1
 - grote verbetering aangebracht voor 25. Verplaats bij de tabel Automations de kolom Naam naar het einde
@@ -980,6 +983,10 @@ div.popupmessage.tribetoolsdisplay {
 }
 [class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='viewContainer-'] {
     order: 1;
+}
+[class*=root][class*=labelLeft]:not([class*=labelFullWidth]):not([class*=inline])>[class*=labelContainer] {
+    width: 100%;
+    max-width: unset;
 }
 `;
         } else if (!self.settings.enablelabeltextvertical && stylesheet) {
