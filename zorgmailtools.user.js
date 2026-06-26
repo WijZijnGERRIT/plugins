@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.6.3.1
+// @version      2026.6.26.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,9 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+versie 2026.6.26.1
+- filter kolommen toegevoegd in MCenter archief
+
 versie 2026.6.3.1
 - probleem opgelost met weergave van zorgmail password textarea in MCenter
 
@@ -931,8 +934,47 @@ version 1.0.0.20230516.144500
     };
 
     self.applyfilter = (table) => {
-        //table.querySelectorAll('button.zorgmailtoolsfilter').forEach(*button,index) => {
-        //});
+        [...table.rows].forEach((row,rowindex) => {
+            if (rowindex == 0) return;
+            let showrow = false;
+            let filtercount = 0;
+            [...table.rows[0].cells].forEach((headercell,colindex) => {
+                let button = headercell.querySelector('button.zorgmailtoolsfilter');
+                if (!button || !button.filtertext) return;
+                filtercount++;
+                let numericmatches = button.filtertext.match(/^([><][=]*)(\d+)$/);
+                if (numericmatches) {
+                    let cellvalue = parseInt(row.cells[colindex].innerText);
+                    let matchvalue = parseInt(numericmatches[2]);
+                    if (!isNaN(cellvalue) && !isNaN(matchvalue)) {
+                        switch (numericmatches[1]) {
+                            case '<':
+                                showrow = cellvalue < matchvalue;
+                                break;
+                            case '<=':
+                                showrow = cellvalue <= matchvalue;
+                                break;
+                            case '>':
+                                showrow = cellvalue > matchvalue;
+                                break;
+                            case '>=':
+                                showrow = cellvalue >= matchvalue;
+                                break;
+                        }
+                    }
+                } else {
+                    let filters = button.filtertext.split('&');
+                    let matches = filters.filter(filtertext => row.cells[colindex].innerText.match(new RegExp(filtertext,'i')));
+                    console.log(filters,row.cells[colindex].innerText,matches);
+                    if (filters.length == matches.length) showrow = true;
+                }
+            });
+            if (filtercount > 0 && !showrow) {
+                row.classList.add('zorgmailtoolsfilterhide');
+            } else {
+                row.classList.remove('zorgmailtoolsfilterhide');
+            }
+        });
     };
 
     self.applyMCenterFilters = () => {
