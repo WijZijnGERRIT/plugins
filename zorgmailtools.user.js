@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.6.26.1
+// @version      2026.6.26.2
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,7 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+versie 2026.6.26.2
 versie 2026.6.26.1
 - filter kolommen toegevoegd in MCenter archief
 
@@ -965,7 +966,6 @@ version 1.0.0.20230516.144500
                 } else {
                     let filters = button.filtertext.split('&');
                     let matches = filters.filter(filtertext => row.cells[colindex].innerText.match(new RegExp(filtertext,'i')));
-                    console.log(filters,row.cells[colindex].innerText,matches);
                     if (filters.length == matches.length) showrow = true;
                 }
             });
