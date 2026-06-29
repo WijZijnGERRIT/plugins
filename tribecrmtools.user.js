@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.23.1
+// @version      2026.6.29.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,9 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.6.29.1
+- kleine aanpassing voor zoek knoppen detectie bij 3. Geef de keuze om een zoek tab altijd als eerste te tonen
 
 versie 2026.6.23.1
 - kleine aanpassing voor de label breedte bij 23. Toon zoek resultaat details onder elkaar
@@ -696,8 +699,8 @@ div.popupmessage.tribetoolsdisplay {
     self.applySearchTab = () => {
         if (self.settings.enablesearchtabselect) {
             let searchinput = document.body.querySelector('div[data-test-id="search-bar"] input');
-            let searchtablist = document.body.querySelector('[class*=content] .MuiBox-root [role=tablist]');
-            let searchtabbuttons = document.body.querySelectorAll('[class*=content] .MuiBox-root [role=tablist] button');
+            let searchtablist = document.body.querySelector('[class*=content] > div.MuiStack-root .MuiBox-root [role=tablist]');
+            let searchtabbuttons = searchtablist?.querySelectorAll('button') || [];
             let searchtabbuttontarget = [...searchtabbuttons].find(button => button.innerText == self.settings.searchtab);
             let searchtabbuttonselected = [...searchtabbuttons].find(button => button.classList.contains('Mui-selected'));
             let searchbuttonsvisible = searchtabbuttons.length > 2 && ([...searchtabbuttons].filter(el => el.innerText.match(/Relaties|Relations|Activiteiten|Activities/)).length == 2);
@@ -743,7 +746,7 @@ div.popupmessage.tribetoolsdisplay {
                 self.observer.connect();
             }
 
-            if (searchbuttonsvisible && searchtabbuttonselected && !progressbar && !searchtablist.classList.contains('tribetoolssearchactivated') && (searchresultsnothing || searchresultsrelations)) {
+            if (searchbuttonsvisible && searchtabbuttonselected && !progressbar && searchtablist && !searchtablist.classList.contains('tribetoolssearchactivated') && (searchresultsnothing || searchresultsrelations)) {
                 if (searchtabbuttonselected.innerText != self.settings.searchtab && searchtabbuttontarget) {
                     console.log(GM_info.script.name + " - Zoektab voorkeur geselecteerd: " + self.settings.searchtab);
 
