@@ -34,6 +34,7 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 24. (admins) Selecteer na terugkeer het eerder geselecteerde submenu
 25. (admins) Verplaats bij de tabel Automations de kolom Naam naar het einde
 26. (admins) Houdt bij de Rollen de kolom kop in beeld
+27. Verberg altijd deze tabs: Uren, Kilometers
 
 Een aantal opties zijn alleen voor beheerders (admins) interessant.
 Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
