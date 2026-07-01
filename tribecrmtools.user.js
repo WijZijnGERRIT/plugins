@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.6.29.1
+// @version      2026.7.1.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,10 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.7.1.1
+- nieuwe aanpassing:
+27. Verberg altijd deze tabs: Uren, Kilometers
 
 versie 2026.6.29.1
 - kleine aanpassing voor zoek knoppen detectie bij 3. Geef de keuze om een zoek tab altijd als eerste te tonen
@@ -284,7 +288,8 @@ versie 2025.7.9.1
         enablerestoresubmenu: true,
         restoresubmenu: {},
         enableautomationscolumns: true,
-        enablestickyroleheaders: true
+        enablestickyroleheaders: true,
+        enablehidetabs: false
     };
 
     self.background = { // pointer to settings.colors or settings.colorsssandbox
@@ -2203,6 +2208,35 @@ button.tribetoolshideai {
         }
     };
 
+    self.hideTabs = () => {
+        let stylesheet = document.head.querySelector('.tribetoolshidetabs');
+        if (stylesheet && !self.settings.enablehidetabs) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (!stylesheet && self.settings.enablehidetabs) {
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'tribetoolshidetabs';
+            stylesheet.innerHTML = `
+.MuiTabs-flexContainer > button.tribetoolshidetabs {
+    display: none;
+}
+`;
+        }
+
+        if (self.settings.enablehidetabs) {
+            document.body.querySelectorAll('.MuiTabs-flexContainer > button:not(.tribetoolshidetabs):has(.MuiBox-root)').forEach(button => {
+                if (!button.innerText.match(/^(Uren|Kilometers)$/)) return;
+                self.observer.disconnect();
+                button.classList.add('tribetoolshidetabs');
+            });
+            self.observer.connect();
+        } else {
+            document.body.querySelectorAll('button.tribetoolshidetabs').forEach(button => {
+                button.classList.remove('tribetoolshidetabs');
+            });
+        }
+    };
+
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
         if (menuitems.length < 3) return;
@@ -2364,6 +2398,11 @@ button.tribetoolshideai {
         },
         highlightlastclickeditem: {
             apply: self.highlightLastClickedItem
+        },
+        hidetabs: { // 27. Verberg altijd deze tabs: Uren, Kilometers
+            description: 'Verberg altijd deze tabs: Uren, Kilometers',
+            short: 'Verberg tabs Uren, Kilometers',
+            apply: self.hideTabs
         }
     };
 
