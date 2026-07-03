@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.7.1.1
+// @version      2026.7.3.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,12 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.7.3.1
+- fix voor stylesheet tribetoolshidenotitie, die werd oneindig vaak ingevoegd
+- plugin update link toegevoegd
+- aanpassing gewijzigd, verberg de tabs alleen als ze leeg zijn:
+27. Verberg altijd deze lege tabs: Uren, Kilometers
 
 versie 2026.7.1.1
 - nieuwe aanpassing:
@@ -1280,7 +1286,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
             info.style.paddingLeft = '16px';
             info.style.paddingRight = '16px';
             info.innerHTML = GM_info.script.description.replace(/([^0-9])\./g,"$1.<br>\n");
-            info.innerHTML += `<p>Versie: <span class="tribetoolsversion">${GM_info.script.name} versie ${GM_info.script.version}</span> (<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">Controleer op updates</a>)</p>`;
+            info.innerHTML += `<p>Versie: <span class="tribetoolsversion">${GM_info.script.name} versie ${GM_info.script.version}</span> (<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">Plugin website</a>, <a href="${GM_info.script.downloadURL}" target="_blank">Check update</a>)</p>`;
 
             lastrow.before(info);
 
@@ -1874,7 +1880,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         return document.body.querySelector('button.tribetoolshidenotitie');
     };
     self.applyHideNotitie = () => {
-        let stylesheet = document.body.querySelector('style.tribetoolshidenotitie');
+        let stylesheet = document.head.querySelector('style.tribetoolshidenotitie');
         if (stylesheet && !self.settings.enablehidenotitie) {
             self.observer.disconnect();
             stylesheet.remove();
@@ -2208,6 +2214,7 @@ button.tribetoolshideai {
         }
     };
 
+    // 27. Verberg altijd deze tabs: Uren, Kilometers
     self.hideTabs = () => {
         let stylesheet = document.head.querySelector('.tribetoolshidetabs');
         if (stylesheet && !self.settings.enablehidetabs) {
@@ -2218,14 +2225,20 @@ button.tribetoolshideai {
             stylesheet.className = 'tribetoolshidetabs';
             stylesheet.innerHTML = `
 .MuiTabs-flexContainer > button.tribetoolshidetabs {
+    width: 2px;
+    margin: 0;
+    min-width: 2px;
+    border-left: 1px dashed #ff000036;
+}
+.MuiTabs-flexContainer > button.tribetoolshidetabs > div {
     display: none;
 }
 `;
         }
 
         if (self.settings.enablehidetabs) {
-            document.body.querySelectorAll('.MuiTabs-flexContainer > button:not(.tribetoolshidetabs):has(.MuiBox-root)').forEach(button => {
-                if (!button.innerText.match(/^(Uren|Kilometers)$/)) return;
+            document.body.querySelectorAll('.MuiTabs-flexContainer > button:not(.tribetoolshidetabs):has(div.MuiBox-root)').forEach(button => {
+                if (!button.querySelector('div.MuiBox-root').textContent.match(/^(Uren|Kilometers)$/) || button.textContent != button.querySelector('div.MuiBox-root').textContent) return;
                 self.observer.disconnect();
                 button.classList.add('tribetoolshidetabs');
             });
@@ -2275,7 +2288,7 @@ button.tribetoolshideai {
         pluginversion = tribetoolsarea.appendChild(document.createElement('span'));
         pluginversion.className = 'MuiTypography-root MuiTypography-caption css-1xgnu2c';
         pluginversion.classList.add('tribetoolsversion');
-        pluginversion.innerHTML = `<a href="https://github.com/WijZijnGERRIT/plugins/tree/tribe" target="_blank">${GM_info.script.name} versie ${GM_info.script.version}</a>`;
+        pluginversion.innerHTML = `${GM_info.script.name} versie ${GM_info.script.version} (<a href="${GM_info.script.downloadURL}" target="_blank">Check update</a>)`;
 
         self.observer.connect();
     };
@@ -2399,9 +2412,9 @@ button.tribetoolshideai {
         highlightlastclickeditem: {
             apply: self.highlightLastClickedItem
         },
-        hidetabs: { // 27. Verberg altijd deze tabs: Uren, Kilometers
-            description: 'Verberg altijd deze tabs: Uren, Kilometers',
-            short: 'Verberg tabs Uren, Kilometers',
+        hidetabs: { // 27. Verberg altijd deze lege tabs: Uren, Kilometers
+            description: 'Verberg altijd deze lege tabs: Uren, Kilometers',
+            short: 'Verberg lege tabs Uren, Kilometers',
             apply: self.hideTabs
         }
     };
