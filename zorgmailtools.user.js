@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.6.26.2
+// @version      2026.7.8.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,10 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+versie 2026.7.8.1
+- verbeterde mcenter keep alive techniek
+- tijdelijk geblokkeerd: hosted mail activatie code weergave in MCenter
+
 versie 2026.6.26.2
 versie 2026.6.26.1
 - filter kolommen toegevoegd in MCenter archief
@@ -98,7 +102,8 @@ version 1.0.0.20230516.144500
         time: 10 * 60 * 1000, // 10 minutes
         notifytime: 10 * 1000, // 10 seconds
         starttime: Date.now(),
-        timerid: 0
+        timerid: 0,
+        xmldata: null
     };
 
     self.arrowup = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABvElEQVR4nJWQzUtUURjGf+fcexfZEJVJhYtatmgTKZHQygxmqHYZc6hACCoi+gvaRwsJhIiURr3DhLUbSRe36MOmL7QgWkWuNALpy2y66b3N22JmzJk5gr6rw3uer/eBVSYuiZfue5I7cu3BeBiXmlbDWUdE9OkbEzlMRjAZOXw1ePwtjFrWRI5L4p2//WoAkxGTnxWTnxVMRpK9j4I/fxuTqHrnM/0vs/7TD2nT3UlrcwKAT19/kbv7kFTb7iB7rsNs3eB9qXJ0jbP/5pZfmK4hA7Q2JzDdnYy9neky/S/urEyiquSewckhf+Jj+sTxDnZuSSCAQiHIMvDz9yL38gVSbbuC4Z72U9uavDk1H8abLo68u5ktTKePdu1nx+aNiNgOLM/cjyKjwRQH9myfun/hYFINPJ+5fNafvF4PPJlqh2UhxcjY68pbQMrKvWbfFVUS8bRSUQ370qgkD+1d0S6MP3sPfcfqS3fdBjKA6/IzXEJQFUMB122AKaXixm1FYP53VNuDRQDAvtUOC2EEqlKDAI6zDgHHYWGxnKDaI3o9AlpTXIr/348Cra1Qu0AUsWj9sHhZt563Rjr8A19jsoInL16BAAAAAElFTkSuQmCC';
@@ -346,7 +351,8 @@ version 1.0.0.20230516.144500
             let storedpasswords = self.getPasswords();
             if (user && user in storedpasswords) {
                 // console.log("display active password",user,storedpasswords[user].password,new Date(storedpasswords[user].created).toLocaleString().replace(/,/,''));
-
+/*
+TIJDELIJK UITGESCHAKELD
                 lastactiverow.cells[1].innerHTML = lastactiverow.cells[1].innerText.trim() + `<br>(aangemaakt op ${new Date(storedpasswords[user].created).toLocaleString().replace(/,/,'')} en alleen voor jou zichtbaar):`;
 
                 let textarea = lastactiverow.cells[1].appendChild(document.createElement('textarea'));
@@ -374,6 +380,7 @@ version 1.0.0.20230516.144500
                     textarea.select();
                     document.execCommand("Copy");
                 }, false);
+*/
             }
         }
 
@@ -697,12 +704,21 @@ version 1.0.0.20230516.144500
                 location.reload();
             };
 
+            // console.log('USE keepalive xmldata');
+            xhr.open(self.keepalive.xmldata.openparams.method, self.keepalive.xmldata.openparams.url);
+            Object.keys(self.keepalive.xmldata.requestHeaders).forEach(header => {
+                xhr.setRequestHeader(header, self.keepalive.xmldata.requestHeaders[header]);
+            });
+            xhr.send(self.keepalive.xmldata.body);
+
+            /*
             xhr.open('POST', 'https://mcenter.zorgmail.nl/services/configuration');
             xhr.setRequestHeader('Content-Type', 'text/x-gwt-rpc; charset=UTF-8');
             xhr.setRequestHeader('Access-Control-Allow-Origin', '*');
             xhr.setRequestHeader('X-GWT-Module-Base', 'https://mcenter.zorgmail.nl/mcenter/');
-            xhr.setRequestHeader('X-GWT-Permutation', 'FB7D0F7A3EB58512FC688329EADECA0A');
-            xhr.send('7|0|4|https://mcenter.zorgmail.nl/mcenter/|9B5C05DC0AED1098D14F35522ED37973|nl.enovation.ems.mcenter.client.service.ConfigurationService|getConfigurationDTO|1|2|3|4|0|');
+            xhr.setRequestHeader('X-GWT-Permutation', '8728B1AD461A9F724C377493B4EA42DB');
+            xhr.send('7|0|4|https://mcenter.zorgmail.nl/mcenter/|1D8D6DECE1535A97AC4A4F72F8C9C648|nl.enovation.ems.mcenter.client.service.ConfigurationService|getConfigurationDTO|1|2|3|4|0|');
+            */
         }
 
         function updateCountDownObject() {
@@ -749,7 +765,7 @@ version 1.0.0.20230516.144500
                 realXHR.addEventListener("readystatechange", () => {
                     if (realXHR.readyState == 1) {
                         resetCountDownTimer();
-                        // console.log('server connection established');
+                        //console.log('RESET COUNTER server connection established');
                     }
                     /*
                 if(realXHR.readyState==2){
@@ -1109,7 +1125,52 @@ version 1.0.0.20230516.144500
         }
     };
 
+    self.storeConfigurationParams = (openparams,requestHeaders,body) => {
+        if (openparams?.url.match(/\/configuration$/) && !self.keepalive.xmldata) {
+            //console.log('STORE keepalive xmldata');
+            self.keepalive.xmldata = {
+                requestHeaders: requestHeaders,
+                openparams: openparams,
+                body: body
+            }
+        }
+        //console.log('SEND XMLHttpRequest',openparams.url,body);
+        //console.log(requestHeaders);
+    };
+
+    self.setupInterceptXMLHttpRequest = (sendcallback) => {
+        XMLHttpRequest.prototype.realOpen = XMLHttpRequest.prototype.open;
+        const myOpen = function(method, url, async, user, password) {
+            this.openparams = {
+                method: method,
+                url: url
+            };
+            this.realOpen(method, url, async, user, password);
+        }
+        XMLHttpRequest.prototype.open = myOpen;
+
+        XMLHttpRequest.prototype.realsetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+        const mysetRequestHeader = function(header, value) {
+            if (!this.requestHeaders) this.requestHeaders = {};
+            this.requestHeaders[header] = value;
+            this.realsetRequestHeader(header, value);
+        }
+        XMLHttpRequest.prototype.setRequestHeader = mysetRequestHeader;
+
+        XMLHttpRequest.prototype.realSend = XMLHttpRequest.prototype.send;
+        const mySend = function(body) {
+            if (typeof sendcallback == 'function') {
+                sendcallback(this.openparams,this.requestHeaders,body);
+            }
+            this.realSend(body);
+        }
+        XMLHttpRequest.prototype.send = mySend;
+    };
+
     self.setup = function () {
+        //console.log('START PLUGIN');
+
+        self.setupInterceptXMLHttpRequest(self.storeConfigurationParams);
         self.setupObserver(document.documentElement || document.body,self.applyChanges);
     };
 
