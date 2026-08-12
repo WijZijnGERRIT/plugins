@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.7.8.1
+// @version      2026.8.12.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,9 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+versie 2026.8.12.1
+- probleem opgelost met het laden van het enovationplatform.com
+
 versie 2026.7.8.1
 - verbeterde mcenter keep alive techniek
 - tijdelijk geblokkeerd: hosted mail activatie code weergave in MCenter
@@ -389,10 +392,10 @@ TIJDELIJK UITGESCHAKELD
 
     self.applyPlatformKeepalive = () => {
         // https://enovationplatform.com/*
-
+return;
         function reload() {
             console.log(`[${new Date()}] Voorkom automatisch uitloggen door een pagina reload`);
-            location.reload();
+            window.location.reload();
         }
 
         function updateCountDownObject() {
@@ -701,7 +704,7 @@ TIJDELIJK UITGESCHAKELD
 
             xhr.onerror = function() {
                 console.log('ERROR - Request mislukt');
-                location.reload();
+                window.location.reload();
             };
 
             // console.log('USE keepalive xmldata');
@@ -1139,6 +1142,8 @@ TIJDELIJK UITGESCHAKELD
     };
 
     self.setupInterceptXMLHttpRequest = (sendcallback) => {
+        if (window.location.host != 'mcenter.zorgmail.nl') return;
+
         XMLHttpRequest.prototype.realOpen = XMLHttpRequest.prototype.open;
         const myOpen = function(method, url, async, user, password) {
             this.openparams = {
