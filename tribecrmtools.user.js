@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.7.3.1
+// @version      2026.8.14.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,12 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.8.14.1
+- kleur van switches aangepast naar GERRIT kleur
+- fix voor spaties verwijderen bij gekopieerde tekst
+- nieuwe aanpassing:
+28. Verberg de Fase logging in de zoek resultaten
 
 versie 2026.7.3.1
 - fix voor stylesheet tribetoolshidenotitie, die werd oneindig vaak ingevoegd
@@ -295,7 +301,8 @@ versie 2025.7.9.1
         restoresubmenu: {},
         enableautomationscolumns: true,
         enablestickyroleheaders: true,
-        enablehidetabs: false
+        enablehidetabs: false,
+        enablehidefaselogging: false
     };
 
     self.background = { // pointer to settings.colors or settings.colorsssandbox
@@ -1218,7 +1225,7 @@ span.outercheckbox .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
     opacity: 1;
 }
 span.outercheckbox .Mui-checked + .MuiSwitch-track {
-    background-color: rgb(251, 21, 118);
+    background-color: #38c499; /* rgb(251, 21, 118); */
 }
 .tribetoolsversion {
     color: rgb(21, 94, 239);
@@ -1657,7 +1664,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
     self.applyTrimClipboard = () => {
-        let searchinput = document.body.querySelector('header input[type=text]');
+        let searchinput = document.body.querySelector('header input[type=text],header input[type=search]');
         if (!searchinput) return;
 
         if (searchinput.classList.contains('tribetoolsfocus')) return;
@@ -2250,6 +2257,56 @@ button.tribetoolshideai {
         }
     };
 
+    // 28. Verberg de Fase logging in de zoek resultaten
+    self.applyHideFaseLogging = () => {
+        let stylesheet = document.head.querySelector('.tribetoolsfaselogging');
+        if (stylesheet && !self.settings.enablehidefaselogging) {
+            self.observer.disconnect();
+            stylesheet.remove();
+        } else if (!stylesheet && self.settings.enablehidefaselogging) {
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'tribetoolsfaselogging';
+            stylesheet.innerHTML = `
+div.tribetoolsfaselogging {
+    display: none;
+}
+`;
+        }
+
+        if (self.settings.enablehidefaselogging) {
+            let faseloggingrows = [...document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root:not(.tribetoolsfaselogging)')].filter(row => row.querySelector('div.textContent > p')?.innerText == 'Fase logging');
+            faseloggingrows.forEach(row => {
+                self.observer.disconnect();
+                row.classList.add('tribetoolsfaselogging');
+            });
+        }
+
+        // voeg een switch toe in het zoek scherm
+        let searchfooter = document.body.querySelector('div[data-test-id=generic-search-footer]:not(.tribetoolsfaseloggingbutton)');
+        if (searchfooter) {
+            let div = document.createElement('div');
+            div.appendChild(self.addCheckbox('enablehidefaselogging', e => {
+                self.applyHideFaseLogging();
+            }));
+            let label = div.appendChild(document.createElement('label'));
+            label.classList.add('tribepointer');
+            label.classList.add('css-oqtjxi');
+            label.append('Verberg Fase logging');
+            label.setAttribute('for',`id_enablehidefaselogging`);
+
+            div.title = 'Toon de labels en tekstvelden onder elkaar';
+            div.addEventListener('click',e => {
+                e.stopPropagation();
+            },false);
+
+            self.observer.disconnect();
+            searchfooter.classList.add('tribetoolsfaseloggingbutton');
+            searchfooter.prepend(div);
+        }
+
+        self.observer.connect();
+    };
+
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
         if (menuitems.length < 3) return;
@@ -2416,6 +2473,10 @@ button.tribetoolshideai {
             description: 'Verberg altijd deze lege tabs: Uren, Kilometers',
             short: 'Verberg lege tabs Uren, Kilometers',
             apply: self.hideTabs
+        },
+        hidefaselogging: { // 28. Verberg de Fase logging in de zoek resultaten
+            description: 'Verberg de Fase logging in de zoek resultaten',
+            apply: self.applyHideFaseLogging
         }
     };
 
