@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/zorgmail/zorgmailtools.user.js
-// @version      2026.8.12.1
+// @version      2026.8.14.1
 // @description  Diverse ZorgMail gerelateerde tools om het gebruik van Enovation Platform, M.Center, Passage ID en Adresboek allemaal wat makkelijker te maken.
 // @author       Daniel
 // @match        https://enovation.formstack.com/forms/untitled_form
@@ -26,6 +26,9 @@
     let self = window.plugin.zorgmailtools;
 
     self.changelog = `
+versie 2026.8.14.1
+- verbetering aangebracht in de mcenter keep alive techniek
+
 versie 2026.8.12.1
 - probleem opgelost met het laden van het enovationplatform.com
 
@@ -708,11 +711,15 @@ return;
             };
 
             // console.log('USE keepalive xmldata');
-            xhr.open(self.keepalive.xmldata.openparams.method, self.keepalive.xmldata.openparams.url);
-            Object.keys(self.keepalive.xmldata.requestHeaders).forEach(header => {
-                xhr.setRequestHeader(header, self.keepalive.xmldata.requestHeaders[header]);
-            });
-            xhr.send(self.keepalive.xmldata.body);
+            if (self.keepalive.xmldata) {
+                xhr.open(self.keepalive.xmldata.openparams.method, self.keepalive.xmldata.openparams.url);
+                Object.keys(self.keepalive.xmldata.requestHeaders).forEach(header => {
+                    xhr.setRequestHeader(header, self.keepalive.xmldata.requestHeaders[header]);
+                });
+                xhr.send(self.keepalive.xmldata.body);
+            } else {
+                window.location.reload();
+            }
 
             /*
             xhr.open('POST', 'https://mcenter.zorgmail.nl/services/configuration');
@@ -752,13 +759,13 @@ return;
             self.observer.connect();
         }
 
-        function resetCountDownTimer() {
+        self.resetCountDownTimer = function () {
             if (self.keepalive.timerid) clearTimeout(self.keepalive.timerid);
             self.keepalive.time = self.keepalive.mcentertime;
             self.keepalive.starttime = Date.now();
             updateCountDownObject();
             self.keepalive.timerid = setInterval(updateCountDownObject,500);
-        }
+        };
 
         function setupAjaxMonitor() {
             let oldXHR = window.XMLHttpRequest;
@@ -767,7 +774,7 @@ return;
                 let realXHR = new oldXHR();
                 realXHR.addEventListener("readystatechange", () => {
                     if (realXHR.readyState == 1) {
-                        resetCountDownTimer();
+                        self.resetCountDownTimer();
                         //console.log('RESET COUNTER server connection established');
                     }
                     /*
@@ -802,7 +809,7 @@ return;
 
             header.parentElement.insertBefore(countdownObj, header.parentElement.children[0]);
 
-            setupAjaxMonitor();
+            //setupAjaxMonitor();
             updateCountDownObject();
             self.keepalive.timerid = setInterval(updateCountDownObject,500);
         });
@@ -1137,7 +1144,10 @@ return;
                 body: body
             }
         }
-        //console.log('SEND XMLHttpRequest',openparams.url,body);
+        if (openparams?.url.match(/mcenter\.zorgmail\.nl/)) {
+            self.resetCountDownTimer();
+        }
+        // console.log('SEND XMLHttpRequest',openparams.url,body);
         //console.log(requestHeaders);
     };
 
