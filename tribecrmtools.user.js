@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.8.14.1
+// @version      2026.8.17.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,10 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.8.17.1
+- aanpassing omgebouwd:
+28. Toon knoppen om bepaalde zoek resultaten te verbergen
 
 versie 2026.8.14.1
 - kleur van switches aangepast naar GERRIT kleur
@@ -302,8 +306,41 @@ versie 2025.7.9.1
         enableautomationscolumns: true,
         enablestickyroleheaders: true,
         enablehidetabs: false,
-        enablehidefaselogging: false
+        enablesearchfilters: false,
+        enablesearchfilter_faselogging: false,
+        enablesearchfilter_wachttijd: false,
+        enablesearchfilter_omzetverdeling: false,
+        enablesearchfilter_bijlage: false,
+        enablesearchfilter_email: false,
+        enablesearchfilter_notitie: false
     };
+
+    self.searchfilters = [
+        {
+            id: 'faselogging',
+            text: "Fase logging"
+        },
+        {
+            id: 'wachttijd',
+            text: "Wachttijd"
+        },
+        {
+            id: 'omzetverdeling',
+            text: "Omzetverdeling"
+        },
+        {
+            id: 'bijlage',
+            text: "Bijlage"
+        },
+        {
+            id: 'email',
+            text: "E-mail"
+        },
+        {
+            id: 'notitie',
+            text: "Notitie"
+        }
+    ];
 
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
@@ -2257,51 +2294,69 @@ button.tribetoolshideai {
         }
     };
 
-    // 28. Verberg de Fase logging in de zoek resultaten
-    self.applyHideFaseLogging = () => {
-        let stylesheet = document.head.querySelector('.tribetoolsfaselogging');
-        if (stylesheet && !self.settings.enablehidefaselogging) {
+    // 28. Toon knoppen om bepaalde zoek resultaten te verbergen
+    self.applyHideSearchResults = () => {
+        let stylesheet = document.head.querySelector('.tribetoolssearchfilter');
+        if (stylesheet && !self.settings.enablesearchfilters) {
             self.observer.disconnect();
             stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablehidefaselogging) {
+        } else if (!stylesheet && self.settings.enablesearchfilters) {
             stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.className = 'tribetoolsfaselogging';
+            stylesheet.className = 'tribetoolssearchfilter';
             stylesheet.innerHTML = `
-div.tribetoolsfaselogging {
+.tribetoolssearchbuttons .outercheckbox {
+    zoom: 0.6;
+}
+div.tribetoolssearchfilter {
     display: none;
 }
 `;
         }
 
-        if (self.settings.enablehidefaselogging) {
-            let faseloggingrows = [...document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root:not(.tribetoolsfaselogging)')].filter(row => row.querySelector('div.textContent > p')?.innerText == 'Fase logging');
-            faseloggingrows.forEach(row => {
-                self.observer.disconnect();
-                row.classList.add('tribetoolsfaselogging');
+        if (self.settings.enablesearchfilters) {
+            self.searchfilters.filter(filter => self.settings[`enablesearchfilter_${filter.id}`]).forEach(filter => {
+                let searchrows = [...document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root:not(.tribetoolssearchfilter)')].filter(row => row.querySelector('div.textContent > p')?.innerText == filter.text);
+                searchrows.forEach(row => {
+                    self.observer.disconnect();
+                    row.classList.add('tribetoolssearchfilter');
+                });
+            });
+            self.searchfilters.filter(filter => !self.settings[`enablesearchfilter_${filter.id}`]).forEach(filter => {
+                let searchrows = [...document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root.tribetoolssearchfilter')].filter(row => row.querySelector('div.textContent > p')?.innerText == filter.text);
+                searchrows.forEach(row => {
+                    self.observer.disconnect();
+                    row.classList.remove('tribetoolssearchfilter');
+                });
             });
         }
 
-        // voeg een switch toe in het zoek scherm
-        let searchfooter = document.body.querySelector('div[data-test-id=generic-search-footer]:not(.tribetoolsfaseloggingbutton)');
-        if (searchfooter) {
-            let div = document.createElement('div');
-            div.appendChild(self.addCheckbox('enablehidefaselogging', e => {
-                self.applyHideFaseLogging();
-            }));
-            let label = div.appendChild(document.createElement('label'));
-            label.classList.add('tribepointer');
-            label.classList.add('css-oqtjxi');
-            label.append('Verberg Fase logging');
-            label.setAttribute('for',`id_enablehidefaselogging`);
+        if (self.settings.enablesearchfilters) {
+            // voeg switches toe in het zoek scherm
+            let searchfooter = document.body.querySelector('div[data-test-id=generic-search-footer]:not(:has(.tribetoolssearchbuttons))');
+            if (searchfooter) {
+                let searchbuttons = document.createElement('div');
+                searchbuttons.append('Verberg');
+                searchbuttons.classList.add('tribetoolssearchbuttons');
+                searchbuttons.addEventListener('click',e => {
+                    e.stopPropagation();
+                },false);
 
-            div.title = 'Toon de labels en tekstvelden onder elkaar';
-            div.addEventListener('click',e => {
-                e.stopPropagation();
-            },false);
+                self.searchfilters.forEach(filter => {
+                    let searchbutton = searchbuttons.appendChild(self.addCheckbox(`enablesearchfilter_${filter.id}`, e => {
+                        self.applyHideSearchResults();
+                    }));
+                    let label = searchbuttons.appendChild(document.createElement('label'));
+                    label.classList.add('tribepointer');
+                    label.classList.add('css-oqtjxi');
+                    label.append(filter.text);
+                    label.setAttribute('for',`id_enablesearchfilter_${filter.id}`);
+                });
 
-            self.observer.disconnect();
-            searchfooter.classList.add('tribetoolsfaseloggingbutton');
-            searchfooter.prepend(div);
+                self.observer.disconnect();
+                searchfooter.prepend(searchbuttons);
+            }
+        } else {
+            document.body.querySelector('.tribetoolssearchbuttons')?.remove();
         }
 
         self.observer.connect();
@@ -2474,9 +2529,9 @@ div.tribetoolsfaselogging {
             short: 'Verberg lege tabs Uren, Kilometers',
             apply: self.hideTabs
         },
-        hidefaselogging: { // 28. Verberg de Fase logging in de zoek resultaten
-            description: 'Verberg de Fase logging in de zoek resultaten',
-            apply: self.applyHideFaseLogging
+        searchfilters: { // 28. Toon knoppen om bepaalde zoek resultaten te verbergen
+            description: 'Toon knoppen om bepaalde zoek resultaten te verbergen',
+            apply: self.applyHideSearchResults
         }
     };
 
