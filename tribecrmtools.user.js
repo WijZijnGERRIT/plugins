@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.8.17.1
+// @version      2026.9.4.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,14 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.9.4.1
+- nieuwe aanpassing:
+30. (admins) Toon SMTP Error logging herzend details
+
+versie 2026.8.25.1
+- nieuwe aanpassing:
+29. (admins) Gebruikerslijst header vast zetten en kleuren en filters voor beheerders en geblokkeerde gebruikers toevoegen
 
 versie 2026.8.17.1
 - aanpassing omgebouwd:
@@ -1099,7 +1107,7 @@ div.popupmessage.tribetoolsdisplay {
         });
     };
 
-    self.addCheckbox = (settingsname,clickevent,idbase = 'id_') => {
+    self.addCheckbox = (settingsname,clickevent,idbase = 'id_',tristate) => {
         let checkboxarea = document.createElement('span');
         checkboxarea.className = 'MuiSwitch-root MuiSwitch-sizeMedium outercheckbox';
         checkboxarea.setAttribute('data-component','n');
@@ -1115,11 +1123,27 @@ div.popupmessage.tribetoolsdisplay {
         let checkbox = checkboxarea.querySelector('input');
         checkbox.id = `${idbase}${settingsname}`;
         checkbox.name = `tribetools${settingsname}`;
-        checkbox.checked = self.settings[settingsname];
+        checkbox.checked = self.settings[settingsname] || false;
+        checkbox.indeterminate = self.settings[settingsname] === undefined && !checkbox.checked;
         if (checkbox.checked) checkboxarea.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
         checkbox.addEventListener('click',e => {
             e.stopPropagation();
-            self.settings[settingsname] = e.target.checked;
+
+            if (tristate) {
+                if (self.settings[settingsname] === undefined && checkbox.checked) {
+                    checkbox.checked = false;
+                    self.settings[settingsname] = false;
+                } else if (self.settings[settingsname] === false && checkbox.checked) {
+                    self.settings[settingsname] = true;
+                } else if (self.settings[settingsname] === true && !checkbox.checked) {
+                    checkbox.checked = false;
+                    self.settings[settingsname] = undefined;
+                }
+            } else {
+                self.settings[settingsname] = checkbox.checked;
+            }
+            checkbox.indeterminate = self.settings[settingsname] === undefined && !checkbox.checked;
+
             self.utils.storeSettings();
             // sync same named checkboxes, value and visual
             document.body.querySelectorAll(`input[type=checkbox][name=tribetools${settingsname}]`).forEach(othercheckbox => {
@@ -1180,6 +1204,12 @@ span.outercheckbox {
     width: 58px;
     height: 38px;
     padding: 9px 13px 9px 12px;
+}
+span.outercheckbox .MuiSwitch-switchBase:has(input:indeterminate) .MuiSwitch-thumb {
+    color: #665252;
+}
+span.outercheckbox:has(input:indeterminate) .MuiSwitch-track {
+    background-color: rgb(210, 13, 13);
 }
 span.outercheckbox .MuiSwitch-switchBase {
     left: 3px;
@@ -2335,7 +2365,7 @@ div.tribetoolssearchfilter {
             let searchfooter = document.body.querySelector('div[data-test-id=generic-search-footer]:not(:has(.tribetoolssearchbuttons))');
             if (searchfooter) {
                 let searchbuttons = document.createElement('div');
-                searchbuttons.append('Verberg');
+                searchbuttons.append('Verberg:');
                 searchbuttons.classList.add('tribetoolssearchbuttons');
                 searchbuttons.addEventListener('click',e => {
                     e.stopPropagation();
@@ -2362,6 +2392,210 @@ div.tribetoolssearchfilter {
         self.observer.connect();
     };
 
+    // 29. (admins) Gebruikerslijst header vast zetten en kleuren en filters voor beheerders en geblokkeerde gebruikers toevoegen
+    self.applyHighlightUsers = () => {
+        let enablehighlighter = window.location.href.match(/configuration\/employees/);
+
+        let stylesheet = document.head.querySelector('.tribetoolshighlightusers');
+        if (stylesheet && !enablehighlighter) {
+            self.observer.disconnect();
+            stylesheet.remove();
+            self.observer.connect();
+        } else if (!stylesheet && enablehighlighter) {
+            document.querySelectorAll('div[class^=item] > div:has(>table):not(.tribetoolsuserstable)').forEach(div => {
+                let columnheaders = [...div.querySelectorAll('table > thead > tr > th')].map(th => th.querySelector('span[data-test-label]')?.innerText);
+                if (columnheaders.find(header => header == 'Gebruikersnaam')) {
+                    self.observer.disconnect();
+                    div.classList.add('tribetoolsuserstable');
+                    self.observer.connect();
+                }
+            });
+            let columnheaders = [...document.querySelectorAll('div.tribetoolsuserstable table > thead > tr > th')].map(th => th.querySelector('span[data-test-label]')?.innerText);
+            let usercolumn = columnheaders.findIndex(header => header == 'Gebruikersnaam') + 1;
+            let admincolumn = columnheaders.findIndex(header => header == 'Beheerder') + 1;
+            let blockedcolumn = columnheaders.findIndex(header => header == 'Geblokkeerd') + 1;
+            if (!columnheaders.length || !usercolumn || !admincolumn || !blockedcolumn) return;
+
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'tribetoolshighlightusers';
+
+            let updateStylsheet = () => {
+                self.observer.disconnect();
+                stylesheet.innerHTML = `
+div.tribetoolsuserstable {
+    overflow-y: auto;
+    height: calc(100dvh - 374px);
+    scrollbar-gutter: stable;
+}
+div.tribetoolsuserstable > table > thead > tr {
+    top: 0;
+    position: sticky;
+    z-index: 1;
+}
+div.tribetoolsuserstable > table > thead > tr > th {
+    box-shadow: inset 0 -1px #ccc;
+}
+div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${admincolumn}) input[type=checkbox]:checked) {
+    background-color: #38c4992b;
+}
+div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn}) input[type=checkbox]:checked) {
+    background-color: #ff8e8e;
+}
+`;
+                if (self.settings.enablefilteradmincolumn === false) {
+                    stylesheet.innerHTML += `
+div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${admincolumn}) input[type=checkbox]:checked) {
+    display: none;
+}`;
+                } else if (self.settings.enablefilteradmincolumn === true) {
+                    stylesheet.innerHTML += `
+div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${admincolumn}) input[type=checkbox]:not(:checked)) {
+    display: none;
+}`;
+                }
+                if (self.settings.enablefilterblockedcolumn === false) {
+                    stylesheet.innerHTML += `
+div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn}) input[type=checkbox]:checked) {
+    display: none;
+}`;
+                } else if (self.settings.enablefilterblockedcolumn === true) {
+                    stylesheet.innerHTML += `
+div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn}) input[type=checkbox]:not(:checked)) {
+    display: none;
+}`;
+                }
+                self.observer.connect();
+            };
+
+            let checkboxareaadmincolumn = document.querySelector(`table > thead > tr > th:nth-of-type(${admincolumn})`).appendChild(document.createElement('div'));
+            checkboxareaadmincolumn.appendChild(self.addCheckbox('enablefilteradmincolumn', e => {
+                updateStylsheet();
+            },'id_enablefilteradmincolumn',true));
+            let checkboxareablockedcolumn = document.querySelector(`table > thead > tr > th:nth-of-type(${blockedcolumn})`).appendChild(document.createElement('div'));
+            checkboxareablockedcolumn.appendChild(self.addCheckbox('enablefilterblockedcolumn', e => {
+                updateStylsheet();
+            },'id_enablefilterblockedcolumn',true));
+            updateStylsheet();
+            self.observer.connect();
+        }
+    };
+
+    // 30. (admins) Toon SMTP Error logging herzend details
+    self.applySmtpLogging = () => {
+        if (!document.querySelector('div[data-test-id=log-events-viewer]')) return;
+
+        let updateLogging = () => {
+            self.observer.disconnect();
+            if (self.settings.filtersmtperrors === true) {
+                //tribetoolssmtphide
+                let logrows = [...document.querySelectorAll('div[data-test-id=log-events-viewer] tbody > tr.MuiTableRow-root')].filter(tr => tr.querySelector('td > div')?.textContent.match(/Error|Info/));
+                logrows.forEach(tr => {
+                    if (tr.classList.contains('tribetoolserrorfixed') || tr.querySelector('td > div')?.textContent == 'Info') {
+                        tr.classList.add('tribetoolssmtphide');
+                    } else {
+                        tr.classList.remove('tribetoolssmtphide');
+                    }
+                });
+            } else if (self.settings.filtersmtperrors === false) {
+                //tribetoolssmtphide
+                let logrows = [...document.querySelectorAll('div[data-test-id=log-events-viewer] tbody > tr.MuiTableRow-root')].filter(tr => tr.querySelector('td > div')?.textContent.match(/Error|Info/));
+                logrows.forEach(tr => {
+                    if (tr.querySelector('td > div')?.textContent == 'Info') {
+                        tr.classList.add('tribetoolssmtphide');
+                    } else {
+                        tr.classList.remove('tribetoolssmtphide');
+                    }
+                });
+            } else if (self.settings.filtersmtperrors === undefined) {
+                document.querySelectorAll('.tribetoolssmtphide').forEach(tr => tr.classList.remove('tribetoolssmtphide'));
+            }
+            self.observer.connect();
+        };
+
+        let headerrow = document.querySelector('div[data-test-id=log-events-viewer] [class^=item] [class^=view-]');
+        if (headerrow && !document.querySelector('.tribetoolssmtpinfo')) {
+            self.observer.disconnect();
+            self.settings.filtersmtperrors = undefined;
+            headerrow.appendChild(self.addCheckbox('filtersmtperrors',updateLogging,'id_filtersmtperrors',true));
+            let smtpinfo = headerrow.appendChild(document.createElement('div'))
+            smtpinfo.classList.add('tribetoolssmtpinfo');
+            updateLogging();
+        }
+
+        let stylesheet = document.head.querySelector('.tribetoolssmtplogging');
+        if (!stylesheet) {
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'tribetoolssmtplogging';
+            stylesheet.innerHTML = `
+.tribetoolserrorfixed {
+    background-color: #0080006e;
+}
+.tribetoolssmtphide {
+    display: none;
+}
+`;
+        }
+
+        // zoek vanaf elke Error naar een Info row met hetzelfde onderwerp
+        // als het er meer dan 1 is, geef dat dan ook aan
+        let logrows = [...document.querySelectorAll('div[data-test-id=log-events-viewer] tbody > tr.MuiTableRow-root')].filter(tr => tr.querySelector('td > div')?.textContent.match(/Error|Info/));
+        let errortitle = '';
+        let unresolvedcount = 0;
+        let fixedcount = 0;
+        logrows.forEach((tr,index) => {
+            if (tr.querySelector('td > div')?.textContent == 'Error') {
+                errortitle = tr.querySelector('td > div > div > span > span')?.textContent.replace(/^Failed sending email with subject /,'');
+                if (errortitle) {
+                    let errorinfo = tr.querySelector('.tribetoolserrorinfo');
+                    if (!errorinfo) {
+                        self.observer.disconnect();
+                        errorinfo = tr.querySelectorAll('td')[1].appendChild(document.createElement('div'));
+                        errorinfo.className = 'tribetoolserrorinfo';
+                    }
+                    let sendmailcount = 0;
+                    let errornumber = 0;
+                    let sameerrorcount = 0;
+                    let startindex = index;
+                    logrows.forEach((trmatch,index) => {
+                        if (index > startindex && trmatch.querySelector('td > div')?.textContent == 'Info' && trmatch.querySelector('td > div > div > span > div')?.textContent == errortitle) {
+                            sendmailcount++;
+                        } else if (trmatch.querySelector('td > div')?.textContent == 'Error' && trmatch.querySelector('td > div > div > span > span')?.textContent.replace(/^Failed sending email with subject /,'') == errortitle) {
+                            sameerrorcount++;
+                            if (index == startindex) errornumber = sameerrorcount;
+                        }
+                    });
+                    let errorinfotext = ''
+                    if (sameerrorcount > 1) errorinfotext += `E:${errornumber}/${sameerrorcount}`;
+                    if (sameerrorcount > 1 && sendmailcount > 1) errorinfotext += ` - `;
+                    if (sendmailcount > 1) errorinfotext += `S${sendmailcount}x`;
+                    if (errorinfo.textContent != errorinfotext) {
+                        self.observer.disconnect();
+                        errorinfo.textContent = errorinfotext;
+                        errorinfo.title = `${sameerrorcount} dezelfde errors / ${sendmailcount}x verzonden`
+                    }
+                    if (sendmailcount) {
+                        if (!tr.classList.contains('tribetoolserrorfixed')) {
+                            self.observer.disconnect();
+                            tr.classList.add('tribetoolserrorfixed');
+                        }
+                        fixedcount++;
+                    } else {
+                        unresolvedcount++;
+                    }
+                }
+            }
+            let smtpinfo = `Unresolved errors: ${unresolvedcount} Fixed: ${fixedcount}`;
+            if (document.querySelector('.tribetoolssmtpinfo').textContent != smtpinfo) {
+                self.observer.disconnect();
+                document.querySelector('.tribetoolssmtpinfo').textContent = smtpinfo;
+            }
+        });
+        self.observer.connect();
+        updateLogging();
+    };
+
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
         if (menuitems.length < 3) return;
@@ -2380,7 +2614,7 @@ div.tribetoolssearchfilter {
             settingsbutton.className = accountbutton.className;
             settingsbutton.innerHTML = accountbutton.innerHTML;
             settingsbutton.querySelector('span').innerText = 'settings';
-            settingsbutton.querySelector('p').innerText = 'Bekijk alle Tribe CRM Tools instellingen';
+            settingsbutton.querySelector('p').innerText = 'Toon alle instellingen...';
             settingsbutton.addEventListener('click',e => {
                 e.stopPropagation();
                 accountbutton.click();
@@ -2468,7 +2702,7 @@ div.tribetoolssearchfilter {
             apply: self.applyAdvancedFields
         },
         trimclipboard: { // 16. Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma's)
-            description: 'Wis automatisch de spaties voor en achter een gekopieerde platte tekst (uit andere programma\'s)',
+            description: 'Wis bij het zoekveld automatisch de spaties voor en achter een gekopieerde tekst (uit andere programma\'s)',
             short: 'Wis gekopieerde spaties',
             check: self.setupClipboardAccess,
             apply: self.applyTrimClipboard
@@ -2532,6 +2766,12 @@ div.tribetoolssearchfilter {
         searchfilters: { // 28. Toon knoppen om bepaalde zoek resultaten te verbergen
             description: 'Toon knoppen om bepaalde zoek resultaten te verbergen',
             apply: self.applyHideSearchResults
+        },
+        highlightusers: { // 29. (admins) Gebruikerslijst header vast zetten en kleuren en filters voor beheerders en geblokkeerde gebruikers toevoegen
+            apply: self.applyHighlightUsers
+        },
+        smtplogging: { // 30. (admins) Toon SMTP Error logging herzend details
+            apply: self.applySmtpLogging
         }
     };
 
