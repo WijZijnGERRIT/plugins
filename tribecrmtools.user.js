@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.9.16.2
+// @version      2026.9.16.3
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,6 +22,7 @@
     self.changelog = `
 Changelog:
 
+versie 2026.9.16.3
 versie 2026.9.16.2
 versie 2026.9.16.1
 - aanpassing van labels verticaal knop voor nieuwe layout van relaties
@@ -745,7 +746,7 @@ div.popupmessage.tribetoolsdisplay {
             if (overflowtextelementswithouttitle.length) {
                 self.observer.disconnect();
 
-                console.log(GM_info.script.name + " - Geef lange teksten een titel:",overflowtextelementswithouttitle.length);
+                // console.log(GM_info.script.name + " - Geef lange teksten een titel:",overflowtextelementswithouttitle.length);
                 overflowtextelementswithouttitle.forEach(element => {
                     element.setAttribute('title',element.innerText);
                     element.classList.add('tribetoolstitle');
@@ -756,7 +757,7 @@ div.popupmessage.tribetoolsdisplay {
             if (titleelements.length) {
                 self.observer.disconnect();
 
-                console.log(GM_info.script.name + " - Herstel lange teksten, verwijder de titel:",titleelements.length);
+                // console.log(GM_info.script.name + " - Herstel lange teksten, verwijder de titel:",titleelements.length);
                 titleelements.forEach(element => {
                     element.removeAttribute('title');
                     element.classList.remove('tribetoolstitle');
@@ -1061,8 +1062,12 @@ div.popupmessage.tribetoolsdisplay {
     display: flex;
     align-items: center;
 }
+.tribeverticalcheckbox label {
+    user-select: none;
+}
 .MuiStack-root:has(.MuiTabs-flexContainer) > .MuiBox-root:has(> .tribeverticalcheckbox) {
     display: flex;
+    align-items: center;
 }
 `;
         }
