@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.9.4.1
+// @version      2026.9.16.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,13 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.9.16.1
+- aanpassing van labels verticaal knop voor nieuwe layout van relaties
+- in de code de stylesheet variabele aangepast naar togglestylesheet voor betere leesbaarheid
+
+versie 2026.9.9.1
+- verbetering voor pagina titel weergave bij configuratie pagina's
 
 versie 2026.9.4.1
 - nieuwe aanpassing:
@@ -760,8 +767,8 @@ div.popupmessage.tribetoolsdisplay {
 
     // 3. Geef de keuze om een zoek tab altijd als eerste te tonen
     self.applySearchTab = () => {
-        if (self.settings.enablesearchtabselect) {
-            let searchinput = document.body.querySelector('div[data-test-id="search-bar"] input');
+        let globalsearchinput = document.body.querySelector('div[data-test-id="input-global-search"] input');
+        if (self.settings.enablesearchtabselect && globalsearchinput) {
             let searchtablist = document.body.querySelector('[class*=content] > div.MuiStack-root .MuiBox-root [role=tablist]');
             let searchtabbuttons = searchtablist?.querySelectorAll('button') || [];
             let searchtabbuttontarget = [...searchtabbuttons].find(button => button.innerText == self.settings.searchtab);
@@ -769,7 +776,7 @@ div.popupmessage.tribetoolsdisplay {
             let searchbuttonsvisible = searchtabbuttons.length > 2 && ([...searchtabbuttons].filter(el => el.innerText.match(/Relaties|Relations|Activiteiten|Activities/)).length == 2);
             let progressbar = document.body.querySelector('div[data-test-id="search-bar"] [role="progressbar"]');
             let searchresultsrelations = [...document.body.querySelectorAll('[class*=card] [class*=header]')].filter(header => header.innerText.match(/(Klanten|Prospects|Medewerkers|Contactpersonen)/)).length >= 1;
-            let searchresultsnothing = [...document.body.querySelectorAll('.MuiBox-root > div > strong')].find(strong => strong.innerText.trim() == searchinput.value.trim());
+            let searchresultsnothing = [...document.body.querySelectorAll('.MuiBox-root > div > strong')].find(strong => strong.innerText.trim() == globalsearchinput?.value.trim());
             // er komen resultaten, eerst onder Relaties, dit kunnen zijn: Klanten, Prospects, Medewerkers, Contactpersonen
             // of:
             // Géén zoekresultaten gevonden voor zoekopdracht: <strong>zoektekst</strong>
@@ -786,7 +793,7 @@ div.popupmessage.tribetoolsdisplay {
                 searchtabbuttons.forEach((button,buttoncnt) => {
                     let radiobutton = button.appendChild(document.createElement("input"));
                     radiobutton.type = "radio";
-                    radiobutton.name = "tribesearchhelpradio";
+                    radiobutton.name = "tribetoolssearchradio";
                     radiobutton.value = button.innerText;
                     radiobutton.title = `${radiobutton.value} als eerste weergeven`;
                     if (radiobutton.value == self.settings.searchtab) {
@@ -907,20 +914,20 @@ div.popupmessage.tribetoolsdisplay {
     // 6. Geef de gebruiker de keuze om de achtergrond kleur in te stellen
     self.applyColorStylesheet = () => {
         // Maak een nieuwe stylesheet en vergelijk daarna met bestaande stylesheet of die vervangen moet worden
-        let stylesheet = document.createElement('style');
-        stylesheet.type = "text/css";
-        stylesheet.className = "tribetoolscolors";
+        let comparestylesheet = document.createElement('style');
+        comparestylesheet.type = "text/css";
+        comparestylesheet.className = "tribetoolscolors";
 
         if (self.settings.enablebackgroundcolors) {
             self.utils.prepareColors();
-            stylesheet.innerHTML = `
+            comparestylesheet.innerHTML = `
 #root > div.MuiBox-root[class*=css-] > .MuiBox-root.css-0, div[style*=linear-gradient] {
     background-image: linear-gradient(235deg, ${self.background.colors[0]}, ${self.background.colors[1]}, ${self.background.colors[2]}) !important;
 }
 `;
         }
         self.settings.colorfavorites.forEach((colors,index) => {
-            stylesheet.innerHTML += `
+            comparestylesheet.innerHTML += `
 .tribetoolsexample${index} {
     background-image: linear-gradient(235deg, ${self.settings.colorfavorites[index][0]}, ${self.settings.colorfavorites[index][1]}, ${self.settings.colorfavorites[index][2]}) !important;
 }
@@ -928,14 +935,14 @@ div.popupmessage.tribetoolsdisplay {
         });
 
         let existingstylesheet = document.head.querySelector('style.tribetoolscolors');
-        if (!existingstylesheet || existingstylesheet.innerHTML != stylesheet.innerHTML) {
+        if (!existingstylesheet || existingstylesheet.innerHTML != comparestylesheet.innerHTML) {
             console.log(GM_info.script.name + " - Update color stylesheet",self.settings.enablebackgroundcolors);
 
             self.observer.disconnect();
             if (existingstylesheet) {
-                existingstylesheet.innerHTML = stylesheet.innerHTML;
+                existingstylesheet.innerHTML = comparestylesheet.innerHTML;
             } else {
-                document.head.appendChild(stylesheet);
+                document.head.appendChild(comparestylesheet);
             }
             self.observer.connect();
         }
@@ -977,7 +984,13 @@ div.popupmessage.tribetoolsdisplay {
                     asset = asset.parentElement;
                 }
             }
-            let newtitle = document.body.querySelector('[placeholder="Geen titel"]')?.value || document.body.querySelector('[data-test-id="label-entity-name"]')?.innerText.replace(/\u200B/,'') || document.body.querySelector('[data-test-id="text-my-workplace"]')?.innerText.replace(/\u200B/,'') || asset?.querySelector('.MuiBox-root.css-0')?.innerText.replace(/\u200B/,'') || document.body.querySelector('.MuiCard-root h6')?.innerText.replace(/\u200B/,'') || restoretitle;
+            let newtitle = document.body.querySelector('[placeholder="Geen titel"]')?.value ||
+                document.body.querySelector('[data-test-id="label-entity-name"]')?.innerText.replace(/\u200B/,'') ||
+                document.body.querySelector('[data-test-id="text-my-workplace"]')?.innerText.replace(/\u200B/,'') ||
+                asset?.querySelector('.MuiBox-root.css-0')?.innerText.replace(/\u200B/,'') ||
+                document.body.querySelector('h4 span[data-test-label^=Configuration]')?.textContent.replace(/\u200B/,'') ||
+                document.body.querySelector('.MuiCard-root h6')?.innerText.replace(/\u200B/,'') ||
+                restoretitle;
             if (newtitle != document.title) {
                 self.observer.disconnect();
 
@@ -1037,12 +1050,28 @@ div.popupmessage.tribetoolsdisplay {
     self.applyLabelTextVertical = () => {
         // .root-UtSA0c.labelLeft-LtqMCq display: flex
         let stylesheet = document.head.querySelector('style.tribetoolsformatvertical');
-        if (self.settings.enablelabeltextvertical && !stylesheet) {
+        if (!stylesheet) {
             self.observer.disconnect();
             stylesheet = document.head.appendChild(document.createElement('style'));
             stylesheet.type = "text/css";
             stylesheet.className = 'tribetoolsformatvertical';
             stylesheet.innerHTML = `
+.tribeverticalcheckbox {
+    display: flex;
+}
+.MuiStack-root:has(.MuiTabs-flexContainer) > .MuiBox-root:has(> .tribeverticalcheckbox) {
+    display: flex;
+}
+`;
+        }
+
+        let togglestylesheet = document.head.querySelector('style.tribetoolstoggleformatvertical');
+        if (self.settings.enablelabeltextvertical && !togglestylesheet) {
+            self.observer.disconnect();
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolstoggleformatvertical';
+            togglestylesheet.innerHTML = `
 [class*=section]:first-child [class*=root][class*=labelLeft]:not(:has(input[type=checkbox])) {
     display: block;
 }
@@ -1061,12 +1090,12 @@ div.popupmessage.tribetoolsdisplay {
     max-width: unset;
 }
 `;
-        } else if (!self.settings.enablelabeltextvertical && stylesheet) {
+        } else if (!self.settings.enablelabeltextvertical && togglestylesheet) {
             self.observer.disconnect();
-            stylesheet.remove();
+            togglestylesheet.remove();
         }
 
-        let sectionheader = document.body.querySelector("[class*='section']:first-child h6")?.parentElement;
+        let sectionheader = document.body.querySelector("[class*='section']:first-child h6")?.parentElement || document.body.querySelector(".MuiStack-root:has(.MuiTabs-flexContainer)>.MuiBox-root:has(>button[aria-label]>span)");
         if (sectionheader && !sectionheader.querySelector('.tribeverticalcheckbox')) {
             //if (document.body.querySelector("[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='labelContainer-']")) {
                 let div = document.createElement('div');
@@ -1603,16 +1632,16 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     // 11. Plaats de +Notitie knop als laatste knop
     self.applyButtonOrder = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolsbuttonorder');
-        if (!self.settings.enablebuttonorder && stylesheet) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolsbuttonorder');
+        if (!self.settings.enablebuttonorder && togglestylesheet) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (self.settings.enablebuttonorder && !stylesheet) {
+            togglestylesheet.remove();
+        } else if (self.settings.enablebuttonorder && !togglestylesheet) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolsbuttonorder';
-            stylesheet.innerHTML = `
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolsbuttonorder';
+            togglestylesheet.innerHTML = `
 .tribetoolsbuttonorder .Mui-selected {
     border-bottom: 3px solid rgb(186, 11, 75);
     border-bottom-right-radius: 0;
@@ -1658,16 +1687,16 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     // 12. Pas een aangepaste weergave toe (lijntjes rond de notitie kaders)
     self.applyMyStyle = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolsmystyle');
-        if (!self.settings.enablemystyle && stylesheet) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolsmystyle');
+        if (!self.settings.enablemystyle && togglestylesheet) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (self.settings.enablemystyle && !stylesheet) {
+            togglestylesheet.remove();
+        } else if (self.settings.enablemystyle && !togglestylesheet) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolsmystyle';
-            stylesheet.innerHTML = `
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolsmystyle';
+            togglestylesheet.innerHTML = `
 .section-DUA6cC:last-child div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0.MuiCard-root {
     border: 1px solid #80808061;
 }
@@ -1816,17 +1845,17 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     // 17. Maak de breedte passend voor de weergave keuzelijst
     self.applyComboWidth = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolscombowidth');
-        if (stylesheet && !self.settings.enablecombowidth) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolscombowidth');
+        if (togglestylesheet && !self.settings.enablecombowidth) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablecombowidth) {
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablecombowidth) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolscombowidth';
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolscombowidth';
             // remove style display:flex from this element
-            stylesheet.innerHTML = `
+            togglestylesheet.innerHTML = `
 .MuiInputBase-root:has([role=combobox]) .MuiBox-root {
     display: block !important;
 }
@@ -1881,17 +1910,17 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 
     // 19. Voorkom het sluiten van een popup door naast de popup te klikken
     self.applyNoClickArea = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolsnoclickarea');
-        if (stylesheet && !self.settings.enablenoclickarea) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolsnoclickarea');
+        if (togglestylesheet && !self.settings.enablenoclickarea) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablenoclickarea) {
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablenoclickarea) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolsnoclickarea';
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolsnoclickarea';
             // remove style display:flex from this element
-            stylesheet.innerHTML = `
+            togglestylesheet.innerHTML = `
 [role=presentation].MuiDialog-root .MuiDialog-container:has([role=dialog].tribetoolsnoclickarea) {
     display: grid !important;
     height: 100%;
@@ -1954,16 +1983,16 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         return document.body.querySelector('button.tribetoolshidenotitie');
     };
     self.applyHideNotitie = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolshidenotitie');
-        if (stylesheet && !self.settings.enablehidenotitie) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolshidenotitie');
+        if (togglestylesheet && !self.settings.enablehidenotitie) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablehidenotitie) {
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablehidenotitie) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolshidenotitie';
-            stylesheet.innerHTML = `
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolshidenotitie';
+            togglestylesheet.innerHTML = `
 button.tribetoolshidenotitie {
     display: none;
 }
@@ -1995,16 +2024,16 @@ button.tribetoolshidenotitie {
 
     // 21. Aangepaste (opvallende) weergave voor beheerders configuratie menu
     self.applyConfigurationStyle = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolsconfiguration');
-        if (stylesheet && !self.settings.enableconfigurationstyle) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolsconfiguration');
+        if (togglestylesheet && !self.settings.enableconfigurationstyle) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enableconfigurationstyle) {
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enableconfigurationstyle) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolsconfiguration';
-            stylesheet.innerHTML = `
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolsconfiguration';
+            togglestylesheet.innerHTML = `
 div.tribetoolsconfiguration {
     background-color: #faa;
     padding-right: 12px;
@@ -2126,16 +2155,16 @@ div.tribetoolsconfiguration > div:has(div > button) {
         let aibutton = document.body.querySelector('button.tribe-ai-button');
         if (!aibutton) return;
 
-        let stylesheet = document.head.querySelector('style.tribetoolshideai');
-        if (stylesheet && !self.settings.enablehideai) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolshideai');
+        if (togglestylesheet && !self.settings.enablehideai) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablehideai) {
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablehideai) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolshideai';
-            stylesheet.innerHTML = `
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolshideai';
+            togglestylesheet.innerHTML = `
 button.tribetoolshideai {
     display: none;
 }
@@ -2155,16 +2184,16 @@ button.tribetoolshideai {
 
     // 23. Toon zoek resultaat details onder elkaar
     self.applySearchResultFormatting = () => {
-        let stylesheet = document.head.querySelector('style.tribetoolsearchresultformatting');
-        if (stylesheet && !self.settings.enablesearchresultformatting) {
+        let togglestylesheet = document.head.querySelector('style.tribetoolsearchresultformatting');
+        if (togglestylesheet && !self.settings.enablesearchresultformatting) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablesearchresultformatting) {
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablesearchresultformatting) {
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.type = "text/css";
-            stylesheet.className = 'tribetoolsearchresultformatting';
-            stylesheet.innerHTML = `
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.type = "text/css";
+            togglestylesheet.className = 'tribetoolsearchresultformatting';
+            togglestylesheet.innerHTML = `
 [class*=listCard] div.MuiStack-root:has(> .tribe-size-md) {
     flex-direction: column;
 }
@@ -2261,14 +2290,14 @@ button.tribetoolshideai {
         let header = document.body.querySelector('[class^=root] > [class^=item]:has(> .MuiBox-root > [class*=header] button > span.material-icons)');
         if (!header) return;
 
-        let stylesheet = document.head.querySelector('.tribetoolsstickyroleheaders');
-        if (stylesheet && !self.settings.enablestickyroleheaders) {
+        let togglestylesheet = document.head.querySelector('.tribetoolsstickyroleheaders');
+        if (togglestylesheet && !self.settings.enablestickyroleheaders) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablestickyroleheaders) {
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.className = 'tribetoolsstickyroleheaders';
-            stylesheet.innerHTML = `
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablestickyroleheaders) {
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.className = 'tribetoolsstickyroleheaders';
+            togglestylesheet.innerHTML = `
 .MuiGrid-root:has(> .MuiPaper-root > [class^=root] > [class^=item] > .MuiBox-root > [class*=header] button > span.material-icons) {
     height: calc(100vh - 53px);
 }
@@ -2290,14 +2319,14 @@ button.tribetoolshideai {
 
     // 27. Verberg altijd deze tabs: Uren, Kilometers
     self.hideTabs = () => {
-        let stylesheet = document.head.querySelector('.tribetoolshidetabs');
-        if (stylesheet && !self.settings.enablehidetabs) {
+        let togglestylesheet = document.head.querySelector('.tribetoolshidetabs');
+        if (togglestylesheet && !self.settings.enablehidetabs) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablehidetabs) {
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.className = 'tribetoolshidetabs';
-            stylesheet.innerHTML = `
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablehidetabs) {
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.className = 'tribetoolshidetabs';
+            togglestylesheet.innerHTML = `
 .MuiTabs-flexContainer > button.tribetoolshidetabs {
     width: 2px;
     margin: 0;
@@ -2326,14 +2355,14 @@ button.tribetoolshideai {
 
     // 28. Toon knoppen om bepaalde zoek resultaten te verbergen
     self.applyHideSearchResults = () => {
-        let stylesheet = document.head.querySelector('.tribetoolssearchfilter');
-        if (stylesheet && !self.settings.enablesearchfilters) {
+        let togglestylesheet = document.head.querySelector('.tribetoolssearchfilter');
+        if (togglestylesheet && !self.settings.enablesearchfilters) {
             self.observer.disconnect();
-            stylesheet.remove();
-        } else if (!stylesheet && self.settings.enablesearchfilters) {
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.className = 'tribetoolssearchfilter';
-            stylesheet.innerHTML = `
+            togglestylesheet.remove();
+        } else if (!togglestylesheet && self.settings.enablesearchfilters) {
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.className = 'tribetoolssearchfilter';
+            togglestylesheet.innerHTML = `
 .tribetoolssearchbuttons .outercheckbox {
     zoom: 0.6;
 }
@@ -2396,12 +2425,12 @@ div.tribetoolssearchfilter {
     self.applyHighlightUsers = () => {
         let enablehighlighter = window.location.href.match(/configuration\/employees/);
 
-        let stylesheet = document.head.querySelector('.tribetoolshighlightusers');
-        if (stylesheet && !enablehighlighter) {
+        let togglestylesheet = document.head.querySelector('.tribetoolshighlightusers');
+        if (togglestylesheet && !enablehighlighter) {
             self.observer.disconnect();
-            stylesheet.remove();
+            togglestylesheet.remove();
             self.observer.connect();
-        } else if (!stylesheet && enablehighlighter) {
+        } else if (!togglestylesheet && enablehighlighter) {
             document.querySelectorAll('div[class^=item] > div:has(>table):not(.tribetoolsuserstable)').forEach(div => {
                 let columnheaders = [...div.querySelectorAll('table > thead > tr > th')].map(th => th.querySelector('span[data-test-label]')?.innerText);
                 if (columnheaders.find(header => header == 'Gebruikersnaam')) {
@@ -2417,12 +2446,12 @@ div.tribetoolssearchfilter {
             if (!columnheaders.length || !usercolumn || !admincolumn || !blockedcolumn) return;
 
             self.observer.disconnect();
-            stylesheet = document.head.appendChild(document.createElement('style'));
-            stylesheet.className = 'tribetoolshighlightusers';
+            togglestylesheet = document.head.appendChild(document.createElement('style'));
+            togglestylesheet.className = 'tribetoolshighlightusers';
 
             let updateStylsheet = () => {
                 self.observer.disconnect();
-                stylesheet.innerHTML = `
+                togglestylesheet.innerHTML = `
 div.tribetoolsuserstable {
     overflow-y: auto;
     height: calc(100dvh - 374px);
@@ -2444,23 +2473,23 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
 }
 `;
                 if (self.settings.enablefilteradmincolumn === false) {
-                    stylesheet.innerHTML += `
+                    togglestylesheet.innerHTML += `
 div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${admincolumn}) input[type=checkbox]:checked) {
     display: none;
 }`;
                 } else if (self.settings.enablefilteradmincolumn === true) {
-                    stylesheet.innerHTML += `
+                    togglestylesheet.innerHTML += `
 div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${admincolumn}) input[type=checkbox]:not(:checked)) {
     display: none;
 }`;
                 }
                 if (self.settings.enablefilterblockedcolumn === false) {
-                    stylesheet.innerHTML += `
+                    togglestylesheet.innerHTML += `
 div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn}) input[type=checkbox]:checked) {
     display: none;
 }`;
                 } else if (self.settings.enablefilterblockedcolumn === true) {
-                    stylesheet.innerHTML += `
+                    togglestylesheet.innerHTML += `
 div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn}) input[type=checkbox]:not(:checked)) {
     display: none;
 }`;
