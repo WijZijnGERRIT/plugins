@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.9.16.1
+// @version      2026.9.16.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,6 +22,7 @@
     self.changelog = `
 Changelog:
 
+versie 2026.9.16.2
 versie 2026.9.16.1
 - aanpassing van labels verticaal knop voor nieuwe layout van relaties
 - in de code de stylesheet variabele aangepast naar togglestylesheet voor betere leesbaarheid
@@ -1058,6 +1059,7 @@ div.popupmessage.tribetoolsdisplay {
             stylesheet.innerHTML = `
 .tribeverticalcheckbox {
     display: flex;
+    align-items: center;
 }
 .MuiStack-root:has(.MuiTabs-flexContainer) > .MuiBox-root:has(> .tribeverticalcheckbox) {
     display: flex;
