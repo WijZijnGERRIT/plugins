@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.9.16.3
+// @version      2026.9.29.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,15 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.9.29.1
+- extra aanpassing voor de breedte passend voor de nieuwe weergave keuzelijst
+- nieuwe aanpassing voor de Sandbox:
+31. (admins) Herstel continue het laatste geselecteerde PACK filter
+
+versie 2026.9.18.1
+- aanpassing positie van labels verticaal knop voor nieuwe layout van relaties
+- aanpassing automations filter knop naar tristate
 
 versie 2026.9.16.3
 versie 2026.9.16.2
@@ -329,8 +338,11 @@ versie 2025.7.9.1
         enablesearchfilter_omzetverdeling: false,
         enablesearchfilter_bijlage: false,
         enablesearchfilter_email: false,
-        enablesearchfilter_notitie: false
+        enablesearchfilter_notitie: false,
+        enablerestorepackfilter: true,
+        selectedpackfilter: ''
     };
+    self.packfilterrestored = false;
 
     self.searchfilters = [
         {
@@ -1102,29 +1114,34 @@ div.popupmessage.tribetoolsdisplay {
             togglestylesheet.remove();
         }
 
+        let sectionrows = document.querySelectorAll('[class*=section]:first-child [class*=root][class*=labelLeft]:not(:has(input[type=checkbox])),[class*=section]:first-child [class*=root][class*=labelLeft]:has(input[type=checkbox])');
+
         let sectionheader = document.body.querySelector("[class*='section']:first-child h6")?.parentElement || document.body.querySelector(".MuiStack-root:has(.MuiTabs-flexContainer)>.MuiBox-root:has(>button[aria-label]>span)");
-        if (sectionheader && !sectionheader.querySelector('.tribeverticalcheckbox')) {
-            //if (document.body.querySelector("[class*='section']:first-child [class*='root'][class*='labelLeft']:has(input[type=checkbox]) [class*='labelContainer-']")) {
-                let div = document.createElement('div');
-                div.classList.add('tribeverticalcheckbox');
-                div.appendChild(self.addCheckbox('enablelabeltextvertical', e => {
-                    // console.log('click checkbox enablelabeltextvertical');
-                    self.applyLabelTextVertical();
-                }));
-                let label = div.appendChild(document.createElement('label'));
-                label.classList.add('tribepointer');
-                label.classList.add('css-oqtjxi');
-                label.append('Onder elkaar');
-                label.setAttribute('for',`id_enablelabeltextvertical`);
+        let sectiondetails = document.body.querySelector('[class*=section]:first-child .MuiBox-root>.MuiPaper-root .MuiStack-root:has(>.MuiBox-root>.MuiStack-root)');
+        if (sectionrows.length && (sectiondetails || sectionheader) && !(sectiondetails || sectionheader).querySelector('.tribeverticalcheckbox')) {
+            let div = document.createElement('div');
+            div.classList.add('tribeverticalcheckbox');
+            div.appendChild(self.addCheckbox('enablelabeltextvertical', e => {
+                // console.log('click checkbox enablelabeltextvertical');
+                self.applyLabelTextVertical();
+            }));
+            let label = div.appendChild(document.createElement('label'));
+            label.classList.add('tribepointer');
+            label.classList.add('css-oqtjxi');
+            label.append('Onder elkaar');
+            label.setAttribute('for',`id_enablelabeltextvertical`);
 
-                div.title = 'Toon de labels en tekstvelden onder elkaar';
-                div.addEventListener('click',e => {
-                    e.stopPropagation();
-                },false);
+            div.title = 'Toon de labels en tekstvelden onder elkaar';
+            div.addEventListener('click',e => {
+                e.stopPropagation();
+            },false);
 
-                self.observer.disconnect();
+            self.observer.disconnect();
+            if (sectiondetails) {
+                sectiondetails.prepend(div);
+            } else if (sectionheader) {
                 sectionheader.appendChild(div);
-            //}
+            }
         }
 
         self.observer.connect();
@@ -1345,7 +1362,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
     border-radius: 15px;
 }
 .tribetoolshiderow {
-    display: none;
+    display: none !important;
 }
 `;
         self.observer.disconnect();
@@ -1866,6 +1883,9 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 .MuiInputBase-root:has([role=combobox]) .MuiBox-root {
     display: block !important;
 }
+[data-test-id="views-dropdown-popover"] {
+    width: unset !important;
+}
 `;
         }
         self.observer.connect();
@@ -2257,24 +2277,38 @@ button.tribetoolshideai {
                 if (checkboxcolumn >= 0 && !table.querySelector('.tribetoolsautomationsfilter')) {
                     let checkboxarea = document.createElement('div');
                     checkboxarea.className = 'tribetoolsautomationsfilter';
-                    let checkbox = checkboxarea.appendChild(document.createElement('input'));
-                    checkbox.type = 'checkbox';
-                    checkbox.addEventListener('change',e => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (checkbox.checked) {
-                            [...table.rows].forEach(row => {
+
+                    let applyfilter = () => {
+                        self.observer.disconnect();
+                        if (self.settings.enableautomationsfilter == undefined) {
+                            table.querySelectorAll('.tribetoolshiderow').forEach(element => element.classList.remove('tribetoolshiderow'));
+                        } else if (self.settings.enableautomationsfilter == true) {
+                            [...table.tBodies[0].rows].forEach(row => {
                                 if (row.querySelector('span[data-test-checked=false]') && row.querySelector('input[type=checkbox]')?.checked == false) {
+                                    row.classList.add('tribetoolshiderow');
+                                } else {
+                                    row.classList.remove('tribetoolshiderow');
+                                }
+                            });
+                        } else if (self.settings.enableautomationsfilter == false) {
+                            [...table.tBodies[0].rows].forEach(row => {
+                                if (row.querySelector('span[data-test-checked=false]') && row.querySelector('input[type=checkbox]')?.checked == false) {
+                                    row.classList.remove('tribetoolshiderow');
+                                } else {
                                     row.classList.add('tribetoolshiderow');
                                 }
                             });
-                        } else {
-                            table.querySelectorAll('.tribetoolshiderow').forEach(element => element.classList.remove('tribetoolshiderow'));
                         }
-                    },false);
-                    checkboxarea.appendChild(document.createTextNode('filter'));
+                        self.observer.connect();
+                    };
+
+                    checkboxarea.appendChild(self.addCheckbox('enableautomationsfilter', e => {
+                        applyfilter();
+                    },'id_enableautomationsfilter',true));
+
                     self.observer.disconnect();
                     table.rows[0].cells[checkboxcolumn].appendChild(checkboxarea);
+                    applyfilter();
                     self.observer.connect();
                 }
             });
@@ -2632,6 +2666,58 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
         updateLogging();
     };
 
+    // 31. (admins) Herstel continue het laatste geselecteerde PACK filter
+    self.applyPackFilter = () => {
+        // Restore Pack selector for Views
+
+        // find packselector, activate restore:
+        let packselector = document.body.querySelector(':has(>[data-test-id="header-dashboards-and-pages"]) .MuiCollapse-root:has(.endAdornment button) .MuiBox-root:has(>i.material-icons:not(.tribepackfilter))');
+        if (packselector) {
+            self.observer.disconnect();
+            packselector.querySelector('i').classList.add('tribepackfilter');
+            self.observer.connect();
+
+            self.packfilterrestored = false;
+            if (self.settings.selectedpackfilter != '') {
+                // find current selection index
+                // open the list, wait for list, check list and select the stored list index
+                packselector.click();
+            }
+        }
+
+        // find menu, record selection
+        let menubutton = document.body.querySelector('.MuiBox-root:has(>i.material-icons.tribepackfilter)');
+        let menu = document.body.querySelector('.MuiPopper-root[role=presentation]:has(li.MuiAutocomplete-option.Mui-focused)');
+        if (menubutton && menu) {
+            // Get selected:
+            menu.querySelectorAll('.MuiAutocomplete-option:not(.tribepackfilteroption)').forEach(option => {
+                self.observer.disconnect();
+                option.classList.add('tribepackfilteroption');
+                option.addEventListener('click', () => {
+                    self.packfilterrestored = true;
+                    self.settings.selectedpackfilter = option.textContent.replace(/\(\d+\)/,'');
+                    self.utils.storeSettings();
+                });
+                self.observer.connect();
+            });
+            if (self.settings.selectedpackfilter != '' && self.packfilterrestored === false) {
+                let option = [...menu.querySelectorAll('.MuiAutocomplete-option')].find(option => option.textContent.replace(/\(\d+\)/,'') == self.settings.selectedpackfilter) || menu.querySelector('li.MuiAutocomplete-option.Mui-focused');
+                if (option) {
+                    self.packfilterrestored = true;
+                    option.click(); // click to select and close
+                }
+            }
+        }
+/*
+        // Open list:
+        document.querySelector('.MuiBox-root:has(>i.material-icons.tribepackfilter)').click();
+        // same as: document.querySelectorAll('[class^=content] .MuiCollapse-root:has(.endAdornment) .MuiBox-root:has(i.material-icons)').click();
+
+        // Select:
+        document.querySelector(`li.MuiAutocomplete-option[data-option-index="${selectedindex}"]`).click();
+*/
+    };
+
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
         if (menuitems.length < 3) return;
@@ -2808,6 +2894,10 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
         },
         smtplogging: { // 30. (admins) Toon SMTP Error logging herzend details
             apply: self.applySmtpLogging
+        },
+        restorepackfilter: { // 31. (admins) Herstel continue het laatste geselecteerde PACK filter
+            description: '(admins) Herstel continue het laatste geselecteerde PACK filter',
+            apply: self.applyPackFilter
         }
     };
 
