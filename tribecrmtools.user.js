@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.9.29.1
+// @version      2026.10.26.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -21,6 +21,15 @@
 
     self.changelog = `
 Changelog:
+
+versie 2026.10.26.1
+- nieuwe aanpassing:
+32. Automatisch Meer tonen voor het automatisch uitklappen van alle notities
+- complete aanpassing van:
+28. Toon knoppen om bepaalde zoek resultaten te verbergen
+
+versie 2026.10.12.1
+- aanpassing zodat deze functie ook werkt op andere schermen met tabbladen 24. Selecteer na terugkeer het eerder geselecteerde submenu
 
 versie 2026.9.29.1
 - extra aanpassing voor de breedte passend voor de nieuwe weergave keuzelijst
@@ -333,14 +342,10 @@ versie 2025.7.9.1
         enablestickyroleheaders: true,
         enablehidetabs: false,
         enablesearchfilters: false,
-        enablesearchfilter_faselogging: false,
-        enablesearchfilter_wachttijd: false,
-        enablesearchfilter_omzetverdeling: false,
-        enablesearchfilter_bijlage: false,
-        enablesearchfilter_email: false,
-        enablesearchfilter_notitie: false,
+        hidecontenttypes: [],
         enablerestorepackfilter: true,
-        selectedpackfilter: ''
+        selectedpackfilter: '',
+        enableshowmore: false
     };
     self.packfilterrestored = false;
 
@@ -1127,7 +1132,6 @@ div.popupmessage.tribetoolsdisplay {
             }));
             let label = div.appendChild(document.createElement('label'));
             label.classList.add('tribepointer');
-            label.classList.add('css-oqtjxi');
             label.append('Onder elkaar');
             label.setAttribute('for',`id_enablelabeltextvertical`);
 
@@ -1197,6 +1201,12 @@ div.popupmessage.tribetoolsdisplay {
             }
             checkbox.indeterminate = self.settings[settingsname] === undefined && !checkbox.checked;
 
+            if (checkbox.checked) {
+                checkbox.closest('.MuiSwitch-switchBase').classList.add('Mui-checked');
+            } else {
+                checkbox.closest('.MuiSwitch-switchBase').classList.remove('Mui-checked');
+            }
+
             self.utils.storeSettings();
             // sync same named checkboxes, value and visual
             document.body.querySelectorAll(`input[type=checkbox][name=tribetools${settingsname}]`).forEach(othercheckbox => {
@@ -1232,6 +1242,8 @@ div.popupmessage.tribetoolsdisplay {
 }
 .tribetoolsoptions label, .tribepointer {
     cursor: pointer;
+    user-select: none;
+    display: inline-flex;
 }
 .tribetoolsoptions button {
     cursor: pointer;
@@ -2232,14 +2244,15 @@ button.tribetoolshideai {
 
     // 24. Selecteer na terugkeer het eerder geselecteerde submenu
     self.applySubmenuRestore = () => {
-        document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button:has(span[data-test-label]):not(.tribetoolssubmenubutton)').forEach(button => {
+        document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root)')
+        document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button:has(span[data-test-label]):not(.tribetoolssubmenubutton),[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root):not(.tribetoolssubmenubutton)').forEach(button => {
             button.classList.add('tribetoolssubmenubutton');
-            if (self.settings.restoresubmenu[location.pathname] && button.querySelector('span[data-test-label]').getAttribute('data-test-label') == self.settings.restoresubmenu[location.pathname]) {
+            if (self.settings.restoresubmenu[location.pathname] && (button.querySelector('span[data-test-label]')?.getAttribute('data-test-label') || button.innerText.trim()) == self.settings.restoresubmenu[location.pathname]) {
                 button.focus();
                 button.click();
             }
             button.addEventListener('click', e => {
-                self.settings.restoresubmenu[location.pathname] = button.querySelector('span[data-test-label]').getAttribute('data-test-label');
+                self.settings.restoresubmenu[location.pathname] = (button.querySelector('span[data-test-label]')?.getAttribute('data-test-label') || button.innerText.trim());
                 self.utils.storeSettings();
             },false);
         });
@@ -2404,59 +2417,149 @@ button.tribetoolshideai {
             togglestylesheet = document.head.appendChild(document.createElement('style'));
             togglestylesheet.className = 'tribetoolssearchfilter';
             togglestylesheet.innerHTML = `
+.tribetoolssearchbuttons {
+    background-color: #f3faf8;
+    border-radius: 15px;
+    padding: 4px;
+}
+.tribetoolssearchbuttons label {
+    border: 1px solid #0080004a;
+    border-radius: 14px;
+    padding-right: 7px;
+    margin-right: 3px;
+}
 .tribetoolssearchbuttons .outercheckbox {
     zoom: 0.6;
 }
 div.tribetoolssearchfilter {
     display: none;
 }
+button.tribetoolssearchreset {
+    border-radius: 14px;
+    background-color: #38c499;
+    border: 0px solid transparent;
+    padding: 5px;
+}
+button.tribetoolssearchreset:disabled {
+    background-color: rgb(233, 237, 242);
+}
+.tribetoolssearchcount {
+    margin-left: 3px;
+}
 `;
         }
 
         if (self.settings.enablesearchfilters) {
-            self.searchfilters.filter(filter => self.settings[`enablesearchfilter_${filter.id}`]).forEach(filter => {
-                let searchrows = [...document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root:not(.tribetoolssearchfilter)')].filter(row => row.querySelector('div.textContent > p')?.innerText == filter.text);
-                searchrows.forEach(row => {
-                    self.observer.disconnect();
+            // maak een lijst van alle zoek resultaten
+            let contenttypes = {};
+            document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root').forEach(row => {
+                let contenttypetext = row.querySelector('div.textContent > span')?.innerText;
+                if (!contenttypetext) return;
+                if (!(contenttypetext in contenttypes)) {
+                    contenttypes[contenttypetext] = {
+                        text: contenttypetext,
+                        count: 0,
+                        rows: [],
+                        id: Object.keys(contenttypes).length,
+                        ishidden: !!self.settings.hidecontenttypes.find(text => text == contenttypetext)
+                    };
+                }
+                contenttypes[contenttypetext].count++;
+                contenttypes[contenttypetext].rows.push(row);
+                if (self.settings.hidecontenttypes.find(text => text == contenttypetext)) {
                     row.classList.add('tribetoolssearchfilter');
-                });
+                }
             });
-            self.searchfilters.filter(filter => !self.settings[`enablesearchfilter_${filter.id}`]).forEach(filter => {
-                let searchrows = [...document.body.querySelectorAll('div[data-test-id=generic-search-content] div.MuiButtonBase-root.tribetoolssearchfilter')].filter(row => row.querySelector('div.textContent > p')?.innerText == filter.text);
-                searchrows.forEach(row => {
-                    self.observer.disconnect();
-                    row.classList.remove('tribetoolssearchfilter');
-                });
-            });
-        }
+            self.contenttypes = contenttypes;
 
-        if (self.settings.enablesearchfilters) {
+            // toon alleen knoppen voor elke gevonden contenttype
+            // gebruik self.settings.hidecontenttypes om de knop uit te zetten (default aan)
+            // bewaar alleen de namen van de uitgeschakelde knoppen in self.settings.hidecontenttypes
+            // verwijder de naam uit de lijst als de knop wordt ingeschakeld
+
             // voeg switches toe in het zoek scherm
-            let searchfooter = document.body.querySelector('div[data-test-id=generic-search-footer]:not(:has(.tribetoolssearchbuttons))');
-            if (searchfooter) {
-                let searchbuttons = document.createElement('div');
-                searchbuttons.append('Verberg:');
-                searchbuttons.classList.add('tribetoolssearchbuttons');
-                searchbuttons.addEventListener('click',e => {
-                    e.stopPropagation();
-                },false);
+            //let searchfooter = document.body.querySelector('div[data-test-id=generic-search-footer]');
+            let searchheader = document.body.querySelector("div:has(>h6>span[data-test-label='GenericSearch.SearchResults'])");
+            if (searchheader) {
+                let searchbuttons = searchheader.querySelector('.tribetoolssearchbuttons')
+                if (!searchbuttons) {
+                    searchbuttons = document.createElement('div');
+                    searchbuttons.classList.add('tribetoolssearchbuttons');
+                    self.observer.disconnect();
+                    searchheader.append(searchbuttons);
+                }
 
-                self.searchfilters.forEach(filter => {
-                    let searchbutton = searchbuttons.appendChild(self.addCheckbox(`enablesearchfilter_${filter.id}`, e => {
-                        self.applyHideSearchResults();
-                    }));
-                    let label = searchbuttons.appendChild(document.createElement('label'));
+                let newbuttons = document.createElement('div');
+
+                let resetbutton = document.createElement('button');
+                resetbutton.className = 'tribetoolssearchreset';
+                resetbutton.innerText = 'Toon alles';
+                resetbutton.addEventListener('click',e => {
+                    self.observer.disconnect();
+                    Object.keys(contenttypes).forEach(contenttypetext => {
+                        const filter = contenttypes[contenttypetext];
+                        document.body.querySelectorAll(`.tribetoolssearchbuttons input[type=checkbox]:not(:checked)#id_searchfilter_${filter.id}`).forEach(input => { input.click(); });
+                    });
+                    self.observer.connect();
+                });
+                resetbutton.disabled = !Object.keys(window.plugin.tribetools.contenttypes).find(contenttypetext => window.plugin.tribetools.contenttypes[contenttypetext].ishidden);
+                let count = resetbutton.appendChild(document.createElement('span'));
+                count.className = 'tribetoolssearchcount';
+                count.innerText = `(${Object.keys(contenttypes).map(contenttypetext => contenttypes[contenttypetext].count).reduce((partialSum, a) => partialSum + a, 0)})`;
+                if (Object.keys(contenttypes).length) {
+                    newbuttons.appendChild(resetbutton);
+                }
+
+                Object.keys(contenttypes).sort().forEach(contenttypetext => {
+                    const filter = contenttypes[contenttypetext];
+                    self.settings[`searchfilter_${filter.id}`] = self.settings.hidecontenttypes.find(text => text == filter.text) ? false : true;
+
+                    let label = newbuttons.appendChild(document.createElement('label'));
                     label.classList.add('tribepointer');
-                    label.classList.add('css-oqtjxi');
+
+                    let searchbutton = label.appendChild(self.addCheckbox(`searchfilter_${filter.id}`, e => {
+                        let show = e.target.checked;
+                        let ishidden = self.settings.hidecontenttypes.find(text => text == filter.text);
+
+                        // console.log('click searchbutton',filter.text,'show=',show,'hidden=',ishidden,self.settings.hidecontenttypes.join(','));
+
+                        if (show && ishidden) {
+                            self.settings.hidecontenttypes.splice(self.settings.hidecontenttypes.findIndex(text => text == filter.text), 1);
+                            self.utils.storeSettings();
+                            self.observer.disconnect();
+                            filter.rows.forEach(row => row.classList.remove('tribetoolssearchfilter'));
+                            filter.ishidden = false;
+                            resetbutton.disabled = !Object.keys(window.plugin.tribetools.contenttypes).find(contenttypetext => window.plugin.tribetools.contenttypes[contenttypetext].ishidden);
+                        } else if (!show && !ishidden) {
+                            self.settings.hidecontenttypes.push(filter.text);
+                            self.utils.storeSettings();
+                            self.observer.disconnect();
+                            filter.rows.forEach(row => row.classList.add('tribetoolssearchfilter'));
+                            filter.ishidden = true;
+                            resetbutton.disabled = !Object.keys(window.plugin.tribetools.contenttypes).find(contenttypetext => window.plugin.tribetools.contenttypes[contenttypetext].ishidden);
+                        }
+                        self.observer.connect();
+                    }));
+
                     label.append(filter.text);
-                    label.setAttribute('for',`id_enablesearchfilter_${filter.id}`);
+
+                    let count = label.appendChild(document.createElement('span'));
+                    count.className = 'tribetoolssearchcount';
+                    count.innerText = `(${filter.count})`;
                 });
 
-                self.observer.disconnect();
-                searchfooter.prepend(searchbuttons);
+                // update buttons, first check for changes:
+                if (newbuttons.innerText.replace(/[ \r\n]/g,'') != searchbuttons.innerText.replace(/[ \r\n]/g,'')) {
+                    // console.log('update searchbuttons',newbuttons.innerText.replace(/[ \r\n]/g,''),searchbuttons.innerText.replace(/[ \r\n]/g,''));
+                    self.observer.disconnect();
+                    searchbuttons.innerHTML = '';
+                    searchbuttons.append(newbuttons);
+                }
             }
-        } else {
-            document.body.querySelector('.tribetoolssearchbuttons')?.remove();
+        } else if (document.body.querySelector('.tribetoolssearchbuttons')) {
+            self.observer.disconnect();
+            document.body.querySelector('.tribetoolssearchbuttons').remove();
+            document.body.querySelectorAll('.tribetoolssearchfilter').forEach(row => row.classList.remove('tribetoolssearchfilter'));
         }
 
         self.observer.connect();
@@ -2718,6 +2821,19 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
 */
     };
 
+    // 32. Automatisch meer tonen voor het automatisch uitklappen van alle notities
+    self.applyShowMore = () => {
+        if (self.settings.enableshowmore) {
+            let showmorebuttons = [...document.body.querySelectorAll('button:not(.tribetoolsshowmore)')].filter(button => button.querySelector('span')?.innerText == 'Meer tonen');
+            showmorebuttons.forEach(button => {
+                button.classList.add('tribetoolsshowmore');
+                self.observer.disconnect();
+                button.click();
+            });
+            self.observer.connect();
+        }
+    };
+
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
         if (menuitems.length < 3) return;
@@ -2898,7 +3014,12 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
         restorepackfilter: { // 31. (admins) Herstel continue het laatste geselecteerde PACK filter
             description: '(admins) Herstel continue het laatste geselecteerde PACK filter',
             apply: self.applyPackFilter
-        }
+        },
+        showmore: { // 32. Automatisch Meer tonen voor het automatisch uitklappen van alle notities
+            description: 'Automatisch Meer tonen voor het automatisch uitklappen van alle notities',
+            short: 'Automatisch Meer tonen',
+            apply: self.applyShowMore
+        },
     };
 
     self.utils.applyChanges = () => {
