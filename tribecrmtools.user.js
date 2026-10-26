@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.10.26.2
+// @version      2026.10.26.3
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,6 +22,7 @@
     self.changelog = `
 Changelog:
 
+versie 2026.10.26.3
 versie 2026.10.26.2
 versie 2026.10.26.1
 - nieuwe aanpassing:
@@ -349,33 +350,6 @@ versie 2025.7.9.1
         enableshowmore: false
     };
     self.packfilterrestored = false;
-
-    self.searchfilters = [
-        {
-            id: 'faselogging',
-            text: "Fase logging"
-        },
-        {
-            id: 'wachttijd',
-            text: "Wachttijd"
-        },
-        {
-            id: 'omzetverdeling',
-            text: "Omzetverdeling"
-        },
-        {
-            id: 'bijlage',
-            text: "Bijlage"
-        },
-        {
-            id: 'email',
-            text: "E-mail"
-        },
-        {
-            id: 'notitie',
-            text: "Notitie"
-        }
-    ];
 
     self.background = { // pointer to settings.colors or settings.colorsssandbox
         colors: [],
