@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.10.26.1
+// @version      2026.10.26.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -22,6 +22,7 @@
     self.changelog = `
 Changelog:
 
+versie 2026.10.26.2
 versie 2026.10.26.1
 - nieuwe aanpassing:
 32. Automatisch Meer tonen voor het automatisch uitklappen van alle notities
@@ -2244,7 +2245,7 @@ button.tribetoolshideai {
 
     // 24. Selecteer na terugkeer het eerder geselecteerde submenu
     self.applySubmenuRestore = () => {
-        document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root)')
+        //document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root)')
         document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button:has(span[data-test-label]):not(.tribetoolssubmenubutton),[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root):not(.tribetoolssubmenubutton)').forEach(button => {
             button.classList.add('tribetoolssubmenubutton');
             if (self.settings.restoresubmenu[location.pathname] && (button.querySelector('span[data-test-label]')?.getAttribute('data-test-label') || button.innerText.trim()) == self.settings.restoresubmenu[location.pathname]) {
