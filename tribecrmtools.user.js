@@ -3,24 +3,30 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.10.26.3
+// @version      2026.11.06.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
 // @match        https://auth.tribecrm.nl/login*
-// @match        https://gesp.zn-man.nl/tools/plugins
 // @run-at       document-end
-// @grant        none
+// @grant        GM_setValue
+// @grant        GM_getValue
 // ==/UserScript==
 
 (() => {
     'use strict';
 
-    if (typeof window.plugin !== 'function') window.plugin = () => {};
-    const self = window.plugin.tribetools = () => {};
-
+    const self = {};
     self.changelog = `
 Changelog:
+
+versie 2026.11.06.1
+- opslag van instellingen overgezet van localStorage naar GM_setValue
+- aanpassing:
+32. Automatisch Meer tonen/weergeven voor het automatisch uitklappen van alle notities
+- nieuwe aanpassingen:
+33. Herstel bepaalde tribe localStorage waarden bij wisselen tussen Sandbox en Productie
+34. Toon vernieuwde opmaak met tabs
 
 versie 2026.10.26.3
 versie 2026.10.26.2
@@ -347,7 +353,9 @@ versie 2025.7.9.1
         hidecontenttypes: [],
         enablerestorepackfilter: true,
         selectedpackfilter: '',
-        enableshowmore: false
+        enableshowmore: false,
+        tribelocalstorage: { ShowTabbedUI: "undefined" },
+        enableTabbedUI: false
     };
     self.packfilterrestored = false;
 
@@ -387,16 +395,22 @@ versie 2025.7.9.1
     };
 
     self.utils.storeSettings = () => {
-        localStorage.setItem('tribecrmtools',JSON.stringify(self.settings));
+        if (window.location.host != "app.tribecrm.nl") return;
+
+        GM_setValue('tribecrmtools', self.settings);
     };
     self.utils.restoreSettings = () => {
-        let data = localStorage.getItem('tribecrmtools');
-        if (data) data = JSON.parse(data);
+        if (window.location.host != "app.tribecrm.nl") return;
+
+        let data = GM_getValue('tribecrmtools');
+        if (typeof data == 'string') data = JSON.parse(data);
+
         if (!data || typeof data != 'object' || data instanceof Array) {
+            console.log('Tribe CRM tools - GEEN opgeslagen settings gevonden');
             if (window.location.href.match(/\/user-settings/)) {
                 self.utils.storeSettings();
             } else {
-                // self.utils.openMySettings();
+                self.utils.openMySettings();
             }
             return;
         };
@@ -1156,7 +1170,7 @@ div.popupmessage.tribetoolsdisplay {
         checkbox.id = `${idbase}${settingsname}`;
         checkbox.name = `tribetools${settingsname}`;
         checkbox.checked = self.settings[settingsname] || false;
-        checkbox.indeterminate = self.settings[settingsname] === undefined && !checkbox.checked;
+        checkbox.indeterminate = tristate && self.settings[settingsname] === undefined && !checkbox.checked;
         if (checkbox.checked) checkboxarea.querySelector('.MuiSwitch-switchBase').classList.add('Mui-checked');
         checkbox.addEventListener('click',e => {
             e.stopPropagation();
@@ -1174,7 +1188,7 @@ div.popupmessage.tribetoolsdisplay {
             } else {
                 self.settings[settingsname] = checkbox.checked;
             }
-            checkbox.indeterminate = self.settings[settingsname] === undefined && !checkbox.checked;
+            checkbox.indeterminate = tristate && self.settings[settingsname] === undefined && !checkbox.checked;
 
             if (checkbox.checked) {
                 checkbox.closest('.MuiSwitch-switchBase').classList.add('Mui-checked');
@@ -1184,7 +1198,7 @@ div.popupmessage.tribetoolsdisplay {
 
             self.utils.storeSettings();
             // sync same named checkboxes, value and visual
-            document.body.querySelectorAll(`input[type=checkbox][name=tribetools${settingsname}]`).forEach(othercheckbox => {
+            [...document.body.querySelectorAll(`input[type=checkbox][name=${checkbox.name}]`)].filter(othercheckbox => othercheckbox != checkbox).forEach(othercheckbox => {
                 othercheckbox.checked = self.settings[settingsname];
                 if (self.settings[settingsname]) {
                     othercheckbox.closest('.MuiSwitch-switchBase').classList.add('Mui-checked');
@@ -2477,7 +2491,7 @@ button.tribetoolssearchreset:disabled {
                     });
                     self.observer.connect();
                 });
-                resetbutton.disabled = !Object.keys(window.plugin.tribetools.contenttypes).find(contenttypetext => window.plugin.tribetools.contenttypes[contenttypetext].ishidden);
+                resetbutton.disabled = !Object.keys(contenttypes).find(contenttypetext => contenttypes[contenttypetext].ishidden);
                 let count = resetbutton.appendChild(document.createElement('span'));
                 count.className = 'tribetoolssearchcount';
                 count.innerText = `(${Object.keys(contenttypes).map(contenttypetext => contenttypes[contenttypetext].count).reduce((partialSum, a) => partialSum + a, 0)})`;
@@ -2504,14 +2518,14 @@ button.tribetoolssearchreset:disabled {
                             self.observer.disconnect();
                             filter.rows.forEach(row => row.classList.remove('tribetoolssearchfilter'));
                             filter.ishidden = false;
-                            resetbutton.disabled = !Object.keys(window.plugin.tribetools.contenttypes).find(contenttypetext => window.plugin.tribetools.contenttypes[contenttypetext].ishidden);
+                            resetbutton.disabled = !Object.keys(contenttypes).find(contenttypetext => contenttypes[contenttypetext].ishidden);
                         } else if (!show && !ishidden) {
                             self.settings.hidecontenttypes.push(filter.text);
                             self.utils.storeSettings();
                             self.observer.disconnect();
                             filter.rows.forEach(row => row.classList.add('tribetoolssearchfilter'));
                             filter.ishidden = true;
-                            resetbutton.disabled = !Object.keys(window.plugin.tribetools.contenttypes).find(contenttypetext => window.plugin.tribetools.contenttypes[contenttypetext].ishidden);
+                            resetbutton.disabled = !Object.keys(contenttypes).find(contenttypetext => contenttypes[contenttypetext].ishidden);
                         }
                         self.observer.connect();
                     }));
@@ -2796,10 +2810,10 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
 */
     };
 
-    // 32. Automatisch meer tonen voor het automatisch uitklappen van alle notities
+    // 32. Automatisch meer tonen/weergeven voor het automatisch uitklappen van alle notities
     self.applyShowMore = () => {
         if (self.settings.enableshowmore) {
-            let showmorebuttons = [...document.body.querySelectorAll('button:not(.tribetoolsshowmore)')].filter(button => button.querySelector('span')?.innerText == 'Meer tonen');
+            let showmorebuttons = [...document.body.querySelectorAll('button:not(.tribetoolsshowmore)')].filter(button => button.querySelector('span')?.innerText.match(/^(Meer tonen|Meer weergeven)$/));
             showmorebuttons.forEach(button => {
                 button.classList.add('tribetoolsshowmore');
                 self.observer.disconnect();
@@ -2808,6 +2822,52 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
             self.observer.connect();
         }
     };
+
+    // 33. Herstel bepaalde tribe localStorage waarden bij wisselen tussen Sandbox en Productie
+    self.restoreTribeLocalstorage = () => {
+        if (window.location.host != "app.tribecrm.nl") return;
+
+        Object.keys(self.settings.tribelocalstorage).forEach(key => {
+            if (!Object.keys(localStorage).includes(key) && self.settings.tribelocalstorage[key] != "undefined") {
+                //console.log('RESTORE',key,localStorage.getItem(key),self.settings.tribelocalstorage[key]);
+                localStorage.setItem(key,self.settings.tribelocalstorage[key]);
+            } else if (Object.keys(localStorage).includes(key) && localStorage.getItem(key) != self.settings.tribelocalstorage[key]) {
+                self.settings.tribelocalstorage[key] = localStorage.getItem(key);
+                //console.log('STORE',key,localStorage.getItem(key),self.settings.tribelocalstorage[key]);
+                self.utils.storeSettings();
+            }
+        });
+    };
+
+    // 34. Toon vernieuwde opmaak met tabs
+    self.applyTabbedUI = () => {
+        let checkbox = document.querySelector('[data-test-id=tabbed-ui-toggle]>input');
+        if (checkbox && !checkbox.classList.contains('tribetoolstabbedui')) {
+            checkbox.classList.add('tribetoolstabbedui');
+            checkbox.addEventListener('click',e => {
+                self.settings.enableTabbedUI = checkbox.checked;
+                self.utils.storeSettings();
+            },false);
+        }
+        if (!Object.keys(localStorage).includes('ShowTabbedUI')) localStorage.setItem('ShowTabbedUI',"false");
+        if (self.settings.enableTabbedUI == true && localStorage.getItem('ShowTabbedUI') != "true") {
+            if (!checkbox) {
+                console.log('ShowTabbedUI true');
+                localStorage.setItem('ShowTabbedUI',"true");
+                window.location.href = window.location.href;
+            } else if (!checkbox?.checked) {
+                checkbox.click();
+            }
+        } else if (self.settings.enableTabbedUI == false && localStorage.getItem('ShowTabbedUI') != "false") {
+            if (!checkbox) {
+                console.log('ShowTabbedUI false');
+                localStorage.setItem('ShowTabbedUI',"false");
+                window.location.href = window.location.href;
+            } else if (checkbox?.checked) {
+                checkbox.click();
+            }
+        }
+    }
 
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
@@ -2842,6 +2902,7 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
             let label = menuoption.appendChild(document.createElement('label'));
             label.setAttribute('for',`${idbase}enable${key}`);
             label.innerHTML = self.options[key].short;
+            if (self.options[key].description) label.title = self.options[key].description;
         });
 
         pluginversion = tribetoolsarea.appendChild(document.createElement('span'));
@@ -2990,15 +3051,23 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
             description: '(admins) Herstel continue het laatste geselecteerde PACK filter',
             apply: self.applyPackFilter
         },
-        showmore: { // 32. Automatisch Meer tonen voor het automatisch uitklappen van alle notities
-            description: 'Automatisch Meer tonen voor het automatisch uitklappen van alle notities',
-            short: 'Automatisch Meer tonen',
+        showmore: { // 32. Automatisch Meer tonen/weergeven voor het automatisch uitklappen van alle notities
+            description: 'Automatisch Meer tonen/weergeven voor het automatisch uitklappen van alle notities',
+            short: 'Automatisch Meer tonen/weergeven',
             apply: self.applyShowMore
         },
+        restoretribelocalstorage: { // 33. Herstel bepaalde tribe localStorage waarden bij wisselen tussen Sandbox en Productie
+            apply: self.restoreTribeLocalstorage
+        },
+        TabbedUI: { // 34. Toon vernieuwde opmaak met tabs
+            description: 'Toon vernieuwde opmaak met tabs',
+            short: 'Toon tabs opmaak',
+            apply: self.applyTabbedUI
+        }
     };
 
     self.utils.applyChanges = () => {
-        self.utils.restoreSettings(); // update de settings
+        self.utils.restoreSettings(); // update de settings die mogelijk door een andere tab aangepast zijn
 
         self.addTribeToolsStylesheet();
 
@@ -3063,14 +3132,15 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
 
     console.log('plugin loaded: ' + GM_info.script.name + ' version ' + GM_info.script.version);
 
-    if (typeof window.showpluginstatus == 'function') {
-        window.showpluginstatus(GM_info.script.name,GM_info.script.version);
-    } else {
-        // verwijder oude opgeslagen data:
-        localStorage.removeItem('tribeclosemessages');
-        localStorage.removeItem('tribesearchhelp');
-
-        self.utils.restoreSettings();
-        self.utils.monitorTribeChanges();
+    // zet oude opgeslagen data over naar GM_setValue:
+    if (Object.keys(localStorage).includes('tribecrmtools')) {
+        if (!GM_getValue('tribecrmtools')) GM_setValue('tribecrmtools', localStorage.getItem('tribecrmtools'));
+        localStorage.removeItem('tribecrmtools');
     }
+    // verwijder oude opgeslagen data:
+    if (Object.keys(localStorage).includes("tribeclosemessages")) localStorage.removeItem('tribeclosemessages');
+    if (Object.keys(localStorage).includes("tribesearchhelp")) localStorage.removeItem('tribesearchhelp');
+
+    self.utils.restoreSettings();
+    self.utils.monitorTribeChanges();
 })();
