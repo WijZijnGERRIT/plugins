@@ -39,7 +39,6 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 29. (admins) Gebruikerslijst header vast zetten en kleuren en filters voor beheerders en geblokkeerde gebruikers toevoegen
 30. (admins) Toon SMTP Error logging herzend details
 31. (admins) Herstel continue het laatste geselecteerde PACK filter
-32. Automatisch Meer tonen voor het automatisch uitklappen van alle notities
-
-Een aantal opties zijn alleen voor beheerders (admins) interessant.
-Let op: De keuzes die je instelt voor deze tools worden alleen opgeslagen in je browser profiel en worden niet bewaard in Tribe.
+32. Automatisch Meer tonen/weergeven voor het automatisch uitklappen van alle notities
+33. Herstel bepaalde tribe localStorage waarden bij wisselen tussen Sandbox en Productie
+34. Toon vernieuwde opmaak met tabs
