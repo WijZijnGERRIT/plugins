@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.11.06.1
+// @version      2026.11.25.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -19,6 +19,12 @@
     const self = {};
     self.changelog = `
 Changelog:
+
+versie 2026.11.25.1
+- het uitschakelen van optie 24 (herstel geselecteerde submenu) wordt nu ook echt toegepast
+- optie 24 (herstel geselecteerde submenu) is nu standaard uitgeschakeld voor nieuwe gebruikers
+- optie 24 (herstel geselecteerde submenu) werkt alleen nog voor de admin configuratie pagina's
+- FOUT opgelost: optie 24 wordt niet meer toegepast op het opstellen van een E-mail en selecteren van een (oude) Fase
 
 versie 2026.11.06.1
 - opslag van instellingen overgezet van localStorage naar GM_setValue
@@ -344,7 +350,7 @@ versie 2025.7.9.1
         enableconfigurationstyle: true,
         enablehideai: false,
         enablesearchresultformatting: false,
-        enablerestoresubmenu: true,
+        enablerestoresubmenu: false,
         restoresubmenu: {},
         enableautomationscolumns: true,
         enablestickyroleheaders: true,
@@ -375,6 +381,7 @@ versie 2025.7.9.1
         let menuitemmijninstellingen = Array.from(document.body.querySelectorAll("[role=menuitem]")).filter(el=>el.innerText.match(/(Mijn account|My account)/));
         if (!menuitemmijninstellingen.length) return;
         self.zoekmijninstellingen = false;
+        console.log(GM_info.script.name + " - click menuitem Mijn account",menuitemmijninstellingen[0]);
         menuitemmijninstellingen[0].click();
     };
     self.utils.openMySettings = () => {
@@ -384,6 +391,7 @@ versie 2025.7.9.1
         }
         let accountbutton = document.body.querySelector('.MuiAvatar-root'); // document.body.querySelector("[aria-label=Account]");
         if (!accountbutton) return;
+        console.log(GM_info.script.name + " - click avatar icon",accountbutton);
         accountbutton.click();
         self.zoekmijninstellingen = true;
         setTimeout(() => {
@@ -649,7 +657,7 @@ div.popupmessage.tribetoolsdisplay {
             if (message && closebutton) {
                 if (self.settings.bekendemededelingen.includes(message)) {
                     // apply changes
-                    console.log(GM_info.script.name + " - Auto sluit deze bekende mededeling:",message);
+                    console.log(GM_info.script.name + " - click sluit deze bekende mededeling:",message,closebutton);
                     closebutton.click();
                 } else if (closebutton.closest('div') && !closebutton.closest('div').querySelector('.autoclose')) {
                     // stop monitoring
@@ -692,6 +700,7 @@ div.popupmessage.tribetoolsdisplay {
             if (self.settings.bekendemededelingen.includes(message)) {
                 // apply changes
                 console.log(GM_info.script.name + " - Auto sluit deze bekende mededeling:",message);
+                console.log(GM_info.script.name + " - click sluit deze bekende mededeling:",message,closebutton);
                 closebutton.click();
             } else if (!closebutton.nextSibling || closebutton.nextSibling.className != 'autoclose') {
                 // stop monitoring
@@ -832,6 +841,7 @@ div.popupmessage.tribetoolsdisplay {
                     searchtablist.classList.add('tribetoolssearchactivated');
                     self.observer.connect();
 
+                    console.log(GM_info.script.name + " - click zoek tab:",self.settings.searchtab,searchtabbuttontarget);
                     searchtabbuttontarget.click();
                     searchtabbuttontarget.scrollIntoView(searchtabbuttons[0],{
                         behavior: "smooth",
@@ -868,6 +878,7 @@ div.popupmessage.tribetoolsdisplay {
         if (logincheckbox && !logincheckbox.checked && window.location.host == 'auth.tribecrm.nl') {
             self.observer.disconnect();
             // apply changes
+            console.log(GM_info.script.name + " - click loginform checkbox",logincheckbox);
             logincheckbox.click();
         }
 
@@ -971,6 +982,7 @@ div.popupmessage.tribetoolsdisplay {
                 subheader.classList.add('tribetoolssubheaderrestored');
                 if (self.settings.enableopensubheaders && (headertext in self.settings.opensubheaders) && self.settings.opensubheaders[headertext] != headeropen) {
                     // restore state
+                    console.log(GM_info.script.name + " - click subheader h6",subheader.querySelector('h6'));
                     subheader.querySelector('h6').click();
                 }
             } else {
@@ -1036,6 +1048,7 @@ div.popupmessage.tribetoolsdisplay {
         Array.from(popup.querySelectorAll('input')).forEach((input,index) => {
             if ((input.type == 'checkbox' || input.type == 'radio') && typeof self.settings.exportcheckboxes[index] == 'boolean') {
                 if (self.settings.enableexportcheckboxes && self.settings.exportcheckboxes[index] && input.checked !== self.settings.exportcheckboxes[index]) {
+                    console.log(GM_info.script.name + " - click exportcheckboxes",input);
                     input.click();
                 }
             }
@@ -1212,6 +1225,7 @@ div.popupmessage.tribetoolsdisplay {
         },false);
         checkboxarea.addEventListener('click',e => {
             e.stopPropagation();
+            console.log(GM_info.script.name + " - click bijhorende checkbox",checkbox);
             checkbox.click();
         },false);
 
@@ -1774,6 +1788,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
         self.observer.disconnect();
         advancedswitch.classList.add('tribetoolsadvanced');
         if (!advancedswitch.checked && self.settings.advancedswitchchecked) {
+            console.log(GM_info.script.name + " - click Generic.Advanced checkbox",advancedswitch);
             advancedswitch.click();
         }
         advancedswitch.addEventListener('click', e => {
@@ -1998,6 +2013,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
                 closebutton.addEventListener('click',e => {
                     e.stopPropagation();
                     let backdrop = dialog.querySelector('button[data-test-id=button-wizard-cancel]') || popup.querySelector('.MuiBackdrop-root');
+                    console.log(GM_info.script.name + " - click backdrop",backdrop);
                     backdrop.click();
                 },false);
             }
@@ -2111,6 +2127,7 @@ div.tribetoolsconfiguration > div:has(div > button) {
                     if (loadmore) {
                         getautomationsbutton.loadmore = true;
                         if (confirm('Er is nog meer data. Wil je eerst meer laden?')) {
+                            console.log(GM_info.script.name + " - click loadmore",loadmore);
                             loadmore.click();
                             return;
                         }
@@ -2233,14 +2250,20 @@ button.tribetoolshideai {
 
     // 24. Selecteer na terugkeer het eerder geselecteerde submenu
     self.applySubmenuRestore = () => {
+        if (!self.settings.enablerestoresubmenu) return;
+        if (!location.pathname.match(/configuration/)) return;
+
         //document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root)')
         document.body.querySelectorAll('[class^=body] .MuiPaper-root .MuiTabs-scroller button:has(span[data-test-label]):not(.tribetoolssubmenubutton),[class^=body] .MuiPaper-root .MuiTabs-scroller button[role=tab]:has(>div.MuiStack-root>div.MuiBox-root):not(.tribetoolssubmenubutton)').forEach(button => {
             button.classList.add('tribetoolssubmenubutton');
-            if (self.settings.restoresubmenu[location.pathname] && (button.querySelector('span[data-test-label]')?.getAttribute('data-test-label') || button.innerText.trim()) == self.settings.restoresubmenu[location.pathname]) {
+            const buttontext = button.querySelector('span[data-test-label]')?.getAttribute('data-test-label') || button.innerText.trim();
+            if (self.settings.restoresubmenu[location.pathname] == buttontext) {
                 button.focus();
+                console.log(GM_info.script.name + " - click to restore submenu",location.pathname,buttontext,button);
                 button.click();
             }
             button.addEventListener('click', e => {
+                if (!self.settings.enablerestoresubmenu) return;
                 self.settings.restoresubmenu[location.pathname] = (button.querySelector('span[data-test-label]')?.getAttribute('data-test-label') || button.innerText.trim());
                 self.utils.storeSettings();
             },false);
@@ -2773,6 +2796,7 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
             if (self.settings.selectedpackfilter != '') {
                 // find current selection index
                 // open the list, wait for list, check list and select the stored list index
+                console.log(GM_info.script.name + " - click to open packselector",packselector);
                 packselector.click();
             }
         }
@@ -2796,6 +2820,7 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
                 let option = [...menu.querySelectorAll('.MuiAutocomplete-option')].find(option => option.textContent.replace(/\(\d+\)/,'') == self.settings.selectedpackfilter) || menu.querySelector('li.MuiAutocomplete-option.Mui-focused');
                 if (option) {
                     self.packfilterrestored = true;
+                    console.log(GM_info.script.name + " - click packselector option",option);
                     option.click(); // click to select and close
                 }
             }
@@ -2817,6 +2842,7 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
             showmorebuttons.forEach(button => {
                 button.classList.add('tribetoolsshowmore');
                 self.observer.disconnect();
+                console.log(GM_info.script.name + " - click show more",button);
                 button.click();
             });
             self.observer.connect();
@@ -2856,6 +2882,7 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
                 localStorage.setItem('ShowTabbedUI',"true");
                 window.location.href = window.location.href;
             } else if (!checkbox?.checked) {
+                console.log(GM_info.script.name + " - click tabbed-ui-toggle",checkbox);
                 checkbox.click();
             }
         } else if (self.settings.enableTabbedUI == false && localStorage.getItem('ShowTabbedUI') != "false") {
@@ -2864,6 +2891,7 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
                 localStorage.setItem('ShowTabbedUI',"false");
                 window.location.href = window.location.href;
             } else if (checkbox?.checked) {
+                console.log(GM_info.script.name + " - click tabbed-ui-toggle",checkbox);
                 checkbox.click();
             }
         }
@@ -2881,15 +2909,18 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
         let tribetoolsarea = menu.appendChild(document.createElement('div'));
         tribetoolsarea.className = 'tribetoolsmenu';
 
-        let accountbutton = [...menu.querySelectorAll('span')].find(span => span.innerText == 'person')?.closest('li');
+        let accountbutton = [...menu.querySelectorAll('span')].find(span => span.innerText == 'person')?.closest('a');
         if (accountbutton) {
-            let settingsbutton = tribetoolsarea.appendChild(document.createElement('li'));
+            let settingsbutton = tribetoolsarea.appendChild(document.createElement('a'));
             settingsbutton.className = accountbutton.className;
+            settingsbutton.setAttribute('role',accountbutton.getAttribute('role'));
             settingsbutton.innerHTML = accountbutton.innerHTML;
             settingsbutton.querySelector('span').innerText = 'settings';
             settingsbutton.querySelector('p').innerText = 'Toon alle instellingen...';
             settingsbutton.addEventListener('click',e => {
+                e.preventDefault();
                 e.stopPropagation();
+                console.log(GM_info.script.name + " - click accountbutton",accountbutton);
                 accountbutton.click();
             });
         }
@@ -3142,5 +3173,17 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
     if (Object.keys(localStorage).includes("tribesearchhelp")) localStorage.removeItem('tribesearchhelp');
 
     self.utils.restoreSettings();
+
+    // verwijder oude opgeslagen restoresubmenu waarden, behoud alleen configuration
+    Object.keys(self.settings.restoresubmenu).forEach(pathname => {
+        if (!pathname.match(/configuration/)) {
+            delete(self.settings.restoresubmenu[pathname]);
+        }
+    });
+    // schakel dit uit als er geen restore menu meer is
+    if (!Object.keys(self.settings.restoresubmenu).length) {
+        self.settings.enablerestoresubmenu = false;
+    }
+
     self.utils.monitorTribeChanges();
 })();
