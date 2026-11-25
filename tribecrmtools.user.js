@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.11.25.1
+// @version      2026.11.25.2
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -20,7 +20,7 @@
     self.changelog = `
 Changelog:
 
-versie 2026.11.25.1
+versie 2026.11.25.2
 - het uitschakelen van optie 24 (herstel geselecteerde submenu) wordt nu ook echt toegepast
 - optie 24 (herstel geselecteerde submenu) is nu standaard uitgeschakeld voor nieuwe gebruikers
 - optie 24 (herstel geselecteerde submenu) werkt alleen nog voor de admin configuratie pagina's
@@ -3178,11 +3178,13 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
     Object.keys(self.settings.restoresubmenu).forEach(pathname => {
         if (!pathname.match(/configuration/)) {
             delete(self.settings.restoresubmenu[pathname]);
+            self.utils.storeSettings();
         }
     });
     // schakel dit uit als er geen restore menu meer is
     if (!Object.keys(self.settings.restoresubmenu).length) {
         self.settings.enablerestoresubmenu = false;
+        self.utils.storeSettings();
     }
 
     self.utils.monitorTribeChanges();
