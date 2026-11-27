@@ -3,7 +3,7 @@
 // @namespace    https://gesp.zn-man.nl/
 // @updateURL    https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
 // @downloadURL  https://github.com/WijZijnGERRIT/plugins/raw/refs/heads/tribe/tribecrmtools.user.js
-// @version      2026.11.25.2
+// @version      2026.11.27.1
 // @description  Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. De instellingen en keuzes voor deze tools worden alleen opgeslagen in deze browser sessie en worden niet bewaard in Tribe.
 // @author       Daniel
 // @match        https://app.tribecrm.nl/*
@@ -19,6 +19,11 @@
     const self = {};
     self.changelog = `
 Changelog:
+
+versie 2026.11.27.1
+- aanpassing van max-width om dit weer werkend te krijgen 17. Maak de breedte passend voor de weergave keuzelijst
+- nieuwe optionele aanpassing:
+35. Niet storen (verberg de notificatie meldingen)
 
 versie 2026.11.25.2
 - het uitschakelen van optie 24 (herstel geselecteerde submenu) wordt nu ook echt toegepast
@@ -361,7 +366,8 @@ versie 2025.7.9.1
         selectedpackfilter: '',
         enableshowmore: false,
         tribelocalstorage: { ShowTabbedUI: "undefined" },
-        enableTabbedUI: false
+        enableTabbedUI: false,
+        enabledonotdisturb: false
     };
     self.packfilterrestored = false;
 
@@ -1901,6 +1907,7 @@ span.outercheckbox .Mui-checked + .MuiSwitch-track {
 }
 [data-test-id="views-dropdown-popover"] {
     width: unset !important;
+    max-width: unset !important;
 }
 `;
         }
@@ -2426,6 +2433,7 @@ button.tribetoolshideai {
             self.observer.disconnect();
             togglestylesheet.remove();
         } else if (!togglestylesheet && self.settings.enablesearchfilters) {
+            self.observer.disconnect();
             togglestylesheet = document.head.appendChild(document.createElement('style'));
             togglestylesheet.className = 'tribetoolssearchfilter';
             togglestylesheet.innerHTML = `
@@ -2895,7 +2903,45 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
                 checkbox.click();
             }
         }
-    }
+    };
+
+    // 35. Niet storen (verberg de notificatie meldingen)
+    self.applyDoNotDisturb = () => {
+        let stylesheet = document.head.querySelector('.tribetoolsdonotdisturb');
+        if (self.settings.enabledonotdisturb && !stylesheet) {
+            self.observer.disconnect();
+            stylesheet = document.head.appendChild(document.createElement('style'));
+            stylesheet.className = 'tribetoolsdonotdisturb';
+            stylesheet.innerHTML = `
+.notistack-SnackbarContainer {
+    display: none;
+}
+`;
+            self.observer.connect();
+        } else if (!self.settings.enabledonotdisturb && stylesheet) {
+            self.observer.disconnect();
+            stylesheet.remove();
+            self.observer.connect();
+        }
+
+        if (self.settings.enabledonotdisturb) {
+            const notificationsmenutitle = document.body.querySelector('h5:has(span[data-test-label="Notification.Drawer.Title"])')
+            if (notificationsmenutitle && !document.body.querySelector('#id_enabledonotdisturb')) {
+                const key = 'donotdisturb';
+
+                const buttonarea = document.createElement('div');
+                const button = buttonarea.appendChild(self.addCheckbox(`enable${key}`,self.options[key].apply));
+                let label = buttonarea.appendChild(document.createElement('label'));
+                label.setAttribute('for',`id_enable${key}`);
+                label.innerHTML = self.options[key].short;
+                if (self.options[key].description) label.title = self.options[key].description;
+
+                self.observer.disconnect();
+                notificationsmenutitle.after(buttonarea);
+                self.observer.connect();
+            }
+        }
+    };
 
     self.applyPluginVersion = () => {
         let menuitems = document.body.querySelectorAll('ul[role=menu]');
@@ -3094,7 +3140,12 @@ div.tribetoolsuserstable > table > tbody > tr:has(td:nth-of-type(${blockedcolumn
             description: 'Toon vernieuwde opmaak met tabs',
             short: 'Toon tabs opmaak',
             apply: self.applyTabbedUI
-        }
+        },
+        donotdisturb: { // 35. Niet storen (verberg de notificatie meldingen)
+            description: 'Niet storen (verberg de notificatie meldingen)',
+            short: 'Niet storen',
+            apply: self.applyDoNotDisturb
+        },
     };
 
     self.utils.applyChanges = () => {
