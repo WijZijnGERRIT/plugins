@@ -42,3 +42,4 @@ Dankzij deze plugin zijn er diverse tools om Tribe een beetje beter te maken. Je
 32. Automatisch Meer tonen/weergeven voor het automatisch uitklappen van alle notities
 33. Herstel bepaalde tribe localStorage waarden bij wisselen tussen Sandbox en Productie
 34. Toon vernieuwde opmaak met tabs
+35. Niet storen (verberg de notificatie meldingen)
